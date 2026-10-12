@@ -34,12 +34,18 @@ describe('stepRoam', () => {
     expect(trace.some((r) => r.facing === 1)).toBe(true);
   });
 
-  it('runs across the lane during a climb', () => {
+  it('drifts a short way toward the roomier side during a climb', () => {
     const start = { ...ROAM_START, x: 60 };
     const { roam } = run(2, () => ({ climb: { id: 3, startX: 60 } }), start);
     expect(roam.x).toBeLessThan(0);
     expect(roam.walking).toBe(0);
     expect(roamGoal(start, { ...base, climb: { id: 3, startX: -60 } })).toBeGreaterThan(0);
+    // The drift is short, so the climb reads as upward rather than a dash across.
+    const wide = { ...base, range: 600 };
+    for (let id = 0; id < 20; id++) {
+      const goal = roamGoal(start, { ...wide, climb: { id, startX: 60 } });
+      expect(Math.abs(goal - 60)).toBeLessThanOrEqual(2.5 * base.size);
+    }
   });
 
   it('stops to look up while the player types', () => {
