@@ -4,8 +4,8 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
-  // Must match the hosting path once hosting is chosen (architecture: Build and Deployment).
-  base: '/',
+  // Must match the GitHub Pages project path (architecture: Build and Deployment).
+  base: '/Summit-app/',
   test: {
     environment: 'jsdom',
     include: ['tests/**/*.test.{ts,tsx}'],

@@ -102,7 +102,7 @@ Pure logic in `game/`, `matching/`, and `storage/` has no React imports, so it c
 
 `npm run dev` starts Vite. `npm run build` produces a static bundle in `dist/`. `npm test` runs Vitest.
 
-Deployment is deferred. When hosting is chosen, the Vite `base` setting must match the hosting path. For GitHub Pages at a project path, that is the repository name.
+The game is hosted on GitHub Pages at `https://kborisov1.github.io/Summit-app/`. The Vite `base` setting is `/Summit-app/` and must match the repository name. A GitHub Actions workflow (`.github/workflows/deploy.yml`) runs the tests, lint, and build on every push to `main`, then publishes `dist/` to Pages.
 
 ## Constraints
 
@@ -113,4 +113,4 @@ Deployment is deferred. When hosting is chosen, the Vite `base` setting must mat
 
 ## Open Questions
 
-- Hosting target and custom domain, to be decided when the game is ready.
+- Custom domain, to be decided when the game is ready.
