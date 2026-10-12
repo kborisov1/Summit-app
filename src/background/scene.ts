@@ -257,11 +257,14 @@ function drawTrees(
   if (density <= 0) return;
   ctx.fillStyle = rgb(color);
   const prev = ctx.globalAlpha;
+  // Opaque trees share one colour, so they go into one path and one fill;
+  // only the few that are fading need their own.
+  const solid = new Path2D();
   for (let k = 0; k < TREE_SLOTS; k++) {
     // Each tree fades out over a short stretch of the climb instead of vanishing.
     const fade = clamp01((density * 0.75 - hash(k * 5.9 + depth * 17)) / TREE_FADE);
     if (fade <= 0) continue;
-    ctx.globalAlpha = prev * fade;
+    const path = fade >= 1 ? solid : new Path2D();
     const u = (k + hash(k * 2.3)) / TREE_SLOTS;
     // Treetops lean in a breeze that rises and falls along the ridge, and
     // each tree is a little out of step. A gust sweeps left to right, so it
@@ -275,18 +278,21 @@ function drawTrees(
     const y = crest(u) + h * 0.15;
     const w = h * 0.36;
     // A pine: three stacked tiers.
-    ctx.beginPath();
     for (let t = 0; t < 3; t++) {
       const ty = y - h * (t / 3);
       const tw = w * (1 - t * 0.25);
       const lean = sway * ((t + 1) / 3);
-      ctx.moveTo(x - tw, ty);
-      ctx.lineTo(x + lean, ty - h * 0.5);
-      ctx.lineTo(x + tw, ty);
+      path.moveTo(x - tw, ty);
+      path.lineTo(x + lean, ty - h * 0.5);
+      path.lineTo(x + tw, ty);
     }
-    ctx.fill();
+    if (path !== solid) {
+      ctx.globalAlpha = prev * fade;
+      ctx.fill(path);
+    }
   }
   ctx.globalAlpha = prev;
+  ctx.fill(solid);
 }
 
 function drawClouds(ctx: CanvasRenderingContext2D, view: SceneView, p: number, storm: number) {
@@ -375,7 +381,8 @@ function drawMist(ctx: CanvasRenderingContext2D, view: SceneView, strength: numb
   mist.addColorStop(0, rgba([250, 226, 200], 0));
   mist.addColorStop(1, rgba([250, 226, 200], 0.5 * strength));
   ctx.fillStyle = mist;
-  ctx.fillRect(0, 0, width, height);
+  // Above its first stop the gradient is clear, so only the lower half is painted.
+  ctx.fillRect(0, height * 0.5, width, height * 0.5);
 }
 
 function drawStormShade(ctx: CanvasRenderingContext2D, width: number, height: number, time: number, storm: number) {
