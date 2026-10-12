@@ -171,10 +171,11 @@ function drawRidge(
   const baseY = height * (layer.base + layer.drop * p - (view.bob ?? 0) * (0.3 + depth));
   if (baseY - layer.amplitude * height > height) return;
 
+  const noise = ridgeProfile(layer);
   const crest = (u: number) => {
     // The far range carries one dominant peak: the summit being climbed.
     const peak = layer.peak * Math.exp(-(((u - 0.64) / 0.16) ** 2));
-    return baseY - (ridge(layer.seed, u * layer.scale) + peak) * layer.amplitude * height;
+    return baseY - (sampleProfile(noise, u) + peak) * layer.amplitude * height;
   };
 
   const pad = width * 0.05;
@@ -281,16 +282,34 @@ function drawCloudSea(ctx: CanvasRenderingContext2D, view: SceneView, strength: 
   }
 }
 
+let puffSprite: HTMLCanvasElement | null = null;
+const PUFF_SIZE = 128;
+
+/** A soft white blob, drawn once and stamped for every cloud. */
+function getPuffSprite(): HTMLCanvasElement | null {
+  if (puffSprite) return puffSprite;
+  if (typeof document === 'undefined') return null;
+  const sprite = document.createElement('canvas');
+  sprite.width = sprite.height = PUFF_SIZE;
+  const c = sprite.getContext('2d');
+  if (!c) return null;
+  const r = PUFF_SIZE / 2;
+  const g = c.createRadialGradient(r, r, 0, r, r, r);
+  g.addColorStop(0, 'rgba(250,246,240,1)');
+  g.addColorStop(1, 'rgba(250,246,240,0)');
+  c.fillStyle = g;
+  c.fillRect(0, 0, PUFF_SIZE, PUFF_SIZE);
+  puffSprite = sprite;
+  return sprite;
+}
+
 function puff(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, alpha: number) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(1, ry / rx);
-  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-  g.addColorStop(0, rgba([250, 246, 240], alpha));
-  g.addColorStop(1, rgba([250, 246, 240], 0));
-  ctx.fillStyle = g;
-  ctx.fillRect(-rx, -rx, rx * 2, rx * 2);
-  ctx.restore();
+  const sprite = getPuffSprite();
+  if (!sprite) return;
+  const prev = ctx.globalAlpha;
+  ctx.globalAlpha = prev * clamp01(alpha);
+  ctx.drawImage(sprite, x - rx, y - ry, rx * 2, ry * 2);
+  ctx.globalAlpha = prev;
 }
 
 function drawMist(ctx: CanvasRenderingContext2D, view: SceneView, strength: number) {
@@ -326,15 +345,16 @@ function drawSnow(ctx: CanvasRenderingContext2D, view: SceneView, intensity: num
   // Wind picks up with the storm, slanting the snowfall.
   const drift = 12 + 70 * intensity;
   ctx.fillStyle = rgba([255, 255, 255], 0.75);
+  ctx.beginPath();
   for (let i = 0; i < count; i++) {
     const fall = 20 + hash(i * 1.7) * 40;
     const y = (hash(i * 9.1) * height + time * fall) % height;
     const x = (((hash(i * 4.3) * width + Math.sin(time * 0.6 + i) * 18 + wind * drift) % width) + width) % width;
     const r = 0.8 + hash(i * 6.7) * 1.6;
-    ctx.beginPath();
+    ctx.moveTo(x + r, y);
     ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fill();
   }
+  ctx.fill();
 }
 
 /** Faint air streaks falling past the camera while it surges upward. */
@@ -372,6 +392,33 @@ function gust(time: number): number {
   const t = time - cycle * 10 - 1 - hash(cycle * 2.9) * 6;
   if (t < 0 || t > 1.4) return 0;
   return Math.sin((t / 1.4) * Math.PI) ** 2;
+}
+
+// Ridgelines never change, so their noise is sampled once per layer and
+// interpolated each frame instead of being recomputed.
+const PROFILE_MIN = -0.2;
+const PROFILE_MAX = 1.2;
+const PROFILE_STEPS = 1024;
+const profiles = new Map<number, Float32Array>();
+
+function ridgeProfile(layer: (typeof LAYERS)[number]): Float32Array {
+  let profile = profiles.get(layer.seed);
+  if (!profile) {
+    profile = new Float32Array(PROFILE_STEPS + 1);
+    for (let i = 0; i <= PROFILE_STEPS; i++) {
+      const u = PROFILE_MIN + ((PROFILE_MAX - PROFILE_MIN) * i) / PROFILE_STEPS;
+      profile[i] = ridge(layer.seed, u * layer.scale);
+    }
+    profiles.set(layer.seed, profile);
+  }
+  return profile;
+}
+
+function sampleProfile(profile: Float32Array, u: number): number {
+  const f = ((u - PROFILE_MIN) / (PROFILE_MAX - PROFILE_MIN)) * PROFILE_STEPS;
+  const i = Math.min(PROFILE_STEPS - 1, Math.max(0, Math.floor(f)));
+  const t = Math.min(1, Math.max(0, f - i));
+  return profile[i] + (profile[i + 1] - profile[i]) * t;
 }
 
 /** Fractal value noise in 0..1, used for ridgelines. */

@@ -18,6 +18,8 @@ interface Props {
 
 /** How quickly the scene eases toward a new altitude without a climb, per second. */
 const EASE_RATE = 1.6;
+/** The scene is soft, so rendering beyond this pixel density only costs fill rate. */
+const MAX_DPR = 1.5;
 /** How much faster the wind runs at full rush. */
 const RUSH_WIND = 6;
 
@@ -56,7 +58,7 @@ export function Background({ progress, climb = null }: Props) {
     let height = 0;
 
     const resize = () => {
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(MAX_DPR, window.devicePixelRatio || 1);
       width = window.innerWidth;
       height = window.innerHeight;
       canvas.width = Math.round(width * dpr);
