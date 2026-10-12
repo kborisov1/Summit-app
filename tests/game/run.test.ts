@@ -54,6 +54,20 @@ describe('run reducer', () => {
     expect(runReducer(before, { type: 'submit', input: '   ' })).toBe(before);
   });
 
+  it('moves on with no gain when the prompt times out', () => {
+    const state = runReducer(createRun(set), { type: 'timeout' });
+    expect(state.altitude).toBe(0);
+    expect(state.promptIndex).toBe(1);
+    expect(state.results[0]).toEqual({ promptId: 'p0', input: '', answer: null, rarity: null, gain: 0 });
+  });
+
+  it('finishes when the last prompt times out', () => {
+    const state = runReducer(play(Array(6).fill('common')), { type: 'timeout' });
+    expect(state.status).toBe('finished');
+    expect(state.altitude).toBe(780);
+    expect(runReducer(state, { type: 'timeout' })).toBe(state);
+  });
+
   it('finishes after the last prompt', () => {
     const state = play(Array(7).fill('common'));
     expect(state.status).toBe('finished');

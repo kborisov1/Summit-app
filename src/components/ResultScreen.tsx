@@ -25,7 +25,7 @@ export function ResultScreen({ result, prompts, streak }: Props) {
           <li key={a.promptId} className={a.rarity === null ? 'result__item miss' : `result__item tier-${a.rarity}`}>
             <span className="result__question">{questions.get(a.promptId) ?? a.promptId}</span>
             <span className="result__answer">
-              {a.answer ?? a.input}
+              {a.answer ?? (a.input === '' ? 'Out of time' : a.input)}
               {a.rarity !== null ? (
                 <>
                   {' '}

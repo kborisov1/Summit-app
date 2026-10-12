@@ -182,12 +182,49 @@ body {
   -webkit-backdrop-filter: blur(10px) saturate(1.1);
 }
 
+.prompt__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .prompt__step {
   margin: 0 0 6px;
   font-size: 0.8rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-soft);
+}
+
+.prompt__clock {
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+
+.prompt__clock.low {
+  color: var(--miss);
+}
+
+.prompt__timebar {
+  height: 4px;
+  margin: 0 0 14px;
+  border-radius: 999px;
+  background: rgba(43, 50, 69, 0.12);
+  overflow: hidden;
+}
+
+.prompt__timefill {
+  height: 100%;
+  background: var(--accent);
+  transform-origin: left;
+  transition: transform 0.25s linear;
+}
+
+.prompt__meta:has(.low) + .prompt__timebar .prompt__timefill {
+  background: var(--miss);
 }
 
 .prompt__question {
@@ -353,7 +390,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .meter__fill {
+  .meter__fill,
+  .prompt__timefill {
     transition: none;
   }
 

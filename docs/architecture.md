@@ -64,7 +64,7 @@ The altitude meter is a regular React component, not part of the canvas, so it s
 
 ## State and Persistence
 
-The run is held in a reducer with states for prompt index, altitude, answers given, and run status. Completing a run writes the result to `localStorage` under a versioned key so the format can change later without breaking saved data.
+The run is held in a reducer with states for prompt index, altitude, answers given, and run status. The per-prompt timer (scope "Core Mechanic") lives in the prompt card and counts down against the wall clock, so it keeps running in a hidden tab. When it expires, the card dispatches a `timeout` action, which is recorded as a result with an empty input and no gain. Completing a run writes the result to `localStorage` under a versioned key so the format can change later without breaking saved data.
 
 Stored data includes the last completed day, the current streak, and per-day results. There is no personal data beyond what the player types as answers, and nothing leaves the device.
 

@@ -77,6 +77,7 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
                 number={run.promptIndex + 1}
                 total={run.prompts.length}
                 onSubmit={(input) => dispatch({ type: 'submit', input })}
+                onTimeout={() => dispatch({ type: 'timeout' })}
               />
             </>
           ) : null}

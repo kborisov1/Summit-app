@@ -1,16 +1,23 @@
 import { useId, useState, type FormEvent } from 'react';
+import { PROMPT_TIME_LIMIT_MS } from '../game/run';
 import type { Prompt } from '../game/types';
+import { useCountdown } from './useCountdown';
+
+const LOW_TIME_MS = 10_000;
 
 interface Props {
   prompt: Prompt;
   number: number;
   total: number;
   onSubmit: (input: string) => void;
+  onTimeout: () => void;
 }
 
-export function PromptCard({ prompt, number, total, onSubmit }: Props) {
+export function PromptCard({ prompt, number, total, onSubmit, onTimeout }: Props) {
   const [input, setInput] = useState('');
   const questionId = useId();
+  const remaining = useCountdown(PROMPT_TIME_LIMIT_MS, onTimeout);
+  const seconds = Math.ceil(remaining / 1000);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -21,9 +28,21 @@ export function PromptCard({ prompt, number, total, onSubmit }: Props) {
 
   return (
     <form className="card prompt" onSubmit={handleSubmit}>
-      <p className="prompt__step">
-        Step {number} of {total}
-      </p>
+      <div className="prompt__meta">
+        <p className="prompt__step">
+          Step {number} of {total}
+        </p>
+        <span
+          className={remaining <= LOW_TIME_MS ? 'prompt__clock low' : 'prompt__clock'}
+          role="timer"
+          aria-label={`${seconds} seconds left`}
+        >
+          {seconds}s
+        </span>
+      </div>
+      <div className="prompt__timebar" aria-hidden="true">
+        <div className="prompt__timefill" style={{ transform: `scaleX(${remaining / PROMPT_TIME_LIMIT_MS})` }} />
+      </div>
       <h2 className="prompt__question" id={questionId}>
         {prompt.question}
       </h2>

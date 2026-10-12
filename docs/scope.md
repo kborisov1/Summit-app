@@ -22,6 +22,7 @@ The game is inspired by Krillion.io, a trivia "deep dive" game, but uses a mount
 - Each prompt has a set of accepted answers. Each answer has a rarity level.
 - The player types an answer. Common answers give small altitude gains. Rare answers give large gains.
 - Each prompt gets one attempt. A wrong answer gains no altitude and the run moves on to the next prompt. Submitting a blank answer does not use the attempt.
+- Each prompt has a 30-second timer. When time runs out, the prompt gains no altitude and the run moves on to the next prompt. Text typed but not submitted is not scored.
 - The run ends when the player reaches the summit or after the last prompt.
 - Autocorrect and alias matching should be forgiving enough to feel fair, without accepting clearly wrong answers.
 
