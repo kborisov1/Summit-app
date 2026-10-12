@@ -57,6 +57,9 @@ const FADE_RATE = 3;
 const MOOD_RATE = 4;
 /** How quickly the runner's size and place follow a change in the UI's box, per second. */
 const AREA_RATE = 5;
+/** Seconds the climber waits, shortest and longest, before nodding at a keystroke again. */
+const NOD_GAP_MIN = 3;
+const NOD_GAP_MAX = 8;
 /** Metres of mountain that fit in one screen height. */
 const METRES_PER_SCREEN = 1150;
 
@@ -106,7 +109,10 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
     let seenMissId = cuesRef.current.missId;
     let missAt = -Infinity;
     let seenKeystrokes = cuesRef.current.keystrokes ?? 0;
-    let keyAt = -Infinity;
+    // The climber nods at the first keystroke, then only now and then as typing goes on.
+    let nodAt = -Infinity;
+    let nextNodAt = -Infinity;
+    let wasTyping = false;
     let roam = ROAM_START;
     let last = performance.now();
     let frame = 0;
@@ -139,8 +145,12 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
       }
       if ((cue.keystrokes ?? 0) !== seenKeystrokes) {
         seenKeystrokes = cue.keystrokes ?? 0;
-        keyAt = time;
+        if (!wasTyping || time >= nextNodAt) {
+          nodAt = time;
+          nextNodAt = time + NOD_GAP_MIN + (NOD_GAP_MAX - NOD_GAP_MIN) * Math.random();
+        }
       }
+      wasTyping = cue.typing;
 
       const anchor = anchorRef.current?.current;
       if (anchor?.isConnected) {
@@ -258,7 +268,7 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
           tilt: roam.tilt,
           alpha: presence,
           pose,
-          mood: reducedMotion ? CALM : { look, tension, sinceMiss: time - missAt, sinceKey: time - keyAt },
+          mood: reducedMotion ? CALM : { look, tension, sinceMiss: time - missAt, sinceNod: time - nodAt },
         },
       });
       // With reduced motion, frames are drawn only when something changes.
