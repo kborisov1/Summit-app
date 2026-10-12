@@ -4,14 +4,14 @@
  * is no ground: it runs up through the scenery
  * on puffs of mist, leaps on rarer answers, and stands on a soft cushion of
  * mist between them. Between answers it stays alive: it breathes, fidgets now
- * and then, looks up while the player types, grows restless as time runs low,
+ * and then (crouching down now and again), looks up while the player types, grows restless as time runs low,
  * and shakes its head at a miss.
  */
 import type { ClimbFx } from './climb';
 
 type Rgb = [number, number, number];
 
-export type ClimberPose = Pick<ClimbFx, 'phase' | 'effort' | 'stride' | 'hop' | 'tuck' | 'cheer' | 'slip'>;
+export type ClimberPose = Pick<ClimbFx, 'phase' | 'effort' | 'stride' | 'hop' | 'tuck' | 'crouch' | 'cheer' | 'slip'>;
 
 export interface ClimberView {
   /** Where the feet rest, in CSS pixels. */
@@ -59,7 +59,7 @@ const SKIN: Rgb = [206, 164, 134];
 
 const HEAD_SHAKE_TIME = 0.7;
 const FIDGET_TIME = 1.4;
-const FIDGETS = ['stretch', 'shake', 'glance', 'bounce'] as const;
+const FIDGETS = ['stretch', 'shake', 'glance', 'bounce', 'crouch'] as const;
 
 interface Fidget {
   kind: (typeof FIDGETS)[number];
@@ -96,7 +96,7 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   const { size, pose, time, ink, mood } = view;
   const { effort, stride, tuck, cheer, slip } = pose;
   const { look, tension } = mood;
-  const standing = (1 - stride) * (1 - tuck) * (1 - slip) * (1 - cheer);
+  const standing = (1 - stride) * (1 - tuck) * (1 - pose.crouch) * (1 - slip) * (1 - cheer);
   const fidget = fidgetAt(time, tension);
   // Fidgets wait while the runner is busy or watching the mountain.
   const gesture = (kind: Fidget['kind'], side?: number) =>
@@ -110,8 +110,11 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   // Restless weight shifts and a bounce on the toes when time runs low.
   const restless = standing * tension * Math.abs(Math.sin(time * 4.2)) * 0.03;
   const bounce = gesture('bounce') * Math.abs(Math.sin((fidget?.t ?? 0) * Math.PI * 3)) * 0.08;
+  // Crouching: winding up for a leap, soaking up a landing, or now and then just
+  // dropping down on its heels for a moment.
+  const crouch = Math.min(1, pose.crouch + 0.85 * gesture('crouch'));
 
-  const lean = 0.08 + 0.25 * effort * stride + 0.25 * tuck + 0.3 * slip - 0.08 * cheer - 0.06 * look + breath;
+  const lean = 0.08 + 0.25 * effort * stride + 0.25 * tuck + 0.3 * slip + 0.35 * crouch - 0.08 * cheer - 0.06 * look + breath;
   const legSwing = stride * (0.35 + 0.35 * effort);
   const armSwing = stride * (0.4 + 0.5 * effort);
   const cycle = (i: number) => 2 * Math.PI * (pose.phase + i * 0.5);
@@ -125,6 +128,9 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
     // In a leap the near knee drives up and the far leg trails.
     thigh += tuck * (i === 0 ? 1 : -0.4);
     bend += tuck * (i === 0 ? 1.5 : 0.9);
+    // A crouch folds both knees, thighs forward.
+    thigh += crouch * (0.75 - i * 0.15);
+    bend += crouch * 1.5;
     // Shaking out a leg kicks it forward loosely.
     const shake = gesture('shake', i);
     thigh += 0.45 * shake;
@@ -157,6 +163,8 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
       angle += (a - angle) * t;
       elbow += (e - elbow) * t;
     };
+    // Arms swing back in a crouch, ready to throw forward into the leap.
+    blendTo(-0.7 + i * 0.2, 0.25, crouch * (1 - tuck));
     blendTo(2.1 - i * 0.5, 0.3, tuck);
     blendTo(1.35 - i * 0.3, 0.4, slip);
     blendTo(Math.PI - 0.3 - i * 0.25, 0.1, cheer);

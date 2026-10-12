@@ -25,6 +25,8 @@ export interface ClimbFx {
   hop: number;
   /** 0..1, how far into a leap's tucked pose the runner is. */
   tuck: number;
+  /** 0..1, how deep the runner crouches: winding up for a leap, or soaking up a landing. */
+  crouch: number;
   /** 0..1, both arms raised in triumph. */
   cheer: number;
   /** 0..1, stumbling and dropping a little. */
@@ -58,13 +60,33 @@ interface Tier {
   leaps: Leap[];
 }
 
-// Rarer answers climb higher and with more drama: common and uncommon are a
-// run, rare adds a leap, very rare two bigger ones, and legendary ends in a
-// giant leap over the last lines and a cheer.
+// Rarer answers climb higher and with more drama: common ends in a small hop,
+// uncommon skips twice, rare adds a proper leap, very rare two bigger ones,
+// and legendary ends in a giant leap over the last lines and a cheer.
 const TIERS: Record<Rarity, Tier> = {
-  1: { duration: 2.0, rush: 0, flash: 0, strides: 2, effort: 0, leaps: [] },
-  2: { duration: 2.4, rush: 0.2, flash: 0, strides: 3, effort: 0.25, leaps: [] },
-  3: { duration: 2.8, rush: 0.45, flash: 0.35, strides: 3, effort: 0.5, leaps: [{ from: 0.4, to: 0.72, height: 0.55 }] },
+  1: { duration: 2.0, rush: 0, flash: 0, strides: 2, effort: 0, leaps: [{ from: 0.62, to: 0.84, height: 0.18 }] },
+  2: {
+    duration: 2.4,
+    rush: 0.2,
+    flash: 0,
+    strides: 3,
+    effort: 0.25,
+    leaps: [
+      { from: 0.35, to: 0.53, height: 0.2 },
+      { from: 0.68, to: 0.9, height: 0.3 },
+    ],
+  },
+  3: {
+    duration: 2.8,
+    rush: 0.45,
+    flash: 0.35,
+    strides: 3,
+    effort: 0.5,
+    leaps: [
+      { from: 0.18, to: 0.32, height: 0.22 },
+      { from: 0.45, to: 0.76, height: 0.55 },
+    ],
+  },
   4: {
     duration: 3.2,
     rush: 0.7,
@@ -76,8 +98,21 @@ const TIERS: Record<Rarity, Tier> = {
       { from: 0.6, to: 0.92, height: 0.8 },
     ],
   },
-  5: { duration: 3.8, rush: 1, flash: 1, strides: 4, effort: 1, leaps: [{ from: 0.45, to: 1, height: 1.3 }] },
+  5: {
+    duration: 3.8,
+    rush: 1,
+    flash: 1,
+    strides: 4,
+    effort: 1,
+    leaps: [
+      { from: 0.18, to: 0.32, height: 0.3 },
+      { from: 0.45, to: 1, height: 1.3 },
+    ],
+  },
 };
+
+/** Share of a climb's movement spent crouching before a leap, or after landing one. */
+const CROUCH_TIME = 0.07;
 
 /** Share of a climb spent moving; the rest lets the reached line glow before it fades. */
 const ARRIVE = 0.82;
@@ -146,6 +181,7 @@ export const STANDING = {
   stride: 0,
   hop: 0,
   tuck: 0,
+  crouch: 0,
   cheer: 0,
   slip: 0,
   lead: 0,
@@ -159,34 +195,42 @@ function runnerMotion(tier: Tier, m: number) {
   // Legs cycle only while running; in the air they hold the leap's pose.
   let air = 0;
   let hop = 0;
+  let tuck = 0;
+  let crouch = 0;
   let airborne = 0;
   for (const leap of tier.leaps) {
     const t = Math.min(1, Math.max(0, (m - leap.from) / (leap.to - leap.from)));
     airborne += Math.min(m, leap.to) > leap.from ? Math.min(m, leap.to) - leap.from : 0;
+    // Bigger leaps tuck harder and crouch deeper; a small hop is a light skip.
+    const scale = Math.min(1, leap.height / 0.5);
     if (t > 0 && t < 1) {
       air = Math.sin(Math.PI * t);
       hop = leap.height * air;
+      tuck = air * (0.35 + 0.65 * scale);
     }
+    // Wind up in a crouch just before take-off, and soak up the landing after.
+    const windUp = (m - (leap.from - CROUCH_TIME)) / CROUCH_TIME;
+    const soak = (m - leap.to) / CROUCH_TIME;
+    const depth = 0.35 + 0.65 * scale;
+    if (windUp > 0 && windUp < 1) crouch = Math.max(crouch, depth * Math.sin((Math.PI / 2) * windUp));
+    if (soak > 0 && soak < 1) crouch = Math.max(crouch, depth * 0.8 * Math.sin(Math.PI * soak));
   }
   const airTime = tier.leaps.reduce((sum, leap) => sum + leap.to - leap.from, 0);
   const run = Math.min(1, Math.max(0, (m - airborne) / (1 - airTime)));
   return {
     ...STANDING,
-    // A plain run eases in and out; a run between leaps keeps its pace into them.
-    phase: tier.strides * (tier.leaps.length ? run : easeInOut(run)),
+    // The run keeps its pace into and out of each leap.
+    phase: tier.strides * run,
     effort: tier.effort,
     // The swing opens as the runner sets off and closes on arrival.
-    stride: Math.sin(Math.PI * run) ** 0.5 * (1 - air),
+    stride: Math.sin(Math.PI * run) ** 0.5 * (1 - air) * (1 - 0.6 * crouch),
     hop,
-    tuck: air,
+    tuck,
+    crouch,
     lead: Math.sin(Math.PI * m) ** 1.5,
     // Legendary lands its giant leap with both arms up.
     cheer: tier.effort === 1 ? smoothstep(0.9, 1, m) : 0,
   };
-}
-
-function easeInOut(u: number): number {
-  return (1 - Math.cos(Math.PI * u)) / 2;
 }
 
 function smoothstep(a: number, b: number, v: number): number {
