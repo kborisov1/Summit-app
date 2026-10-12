@@ -5,6 +5,7 @@
  * progress rises (scope "Experience").
  */
 import { drawClimber, type ClimberView } from './climber';
+import { drawMarkers, type MarkersView } from './markers';
 import { drawWall, type WallView } from './wall';
 
 export interface SceneView {
@@ -22,7 +23,9 @@ export interface SceneView {
   /** The climber, when one is on screen; the scene picks its colours. */
   climber?: Omit<ClimberView, 'time' | 'ink'> | null;
   /** The rock face behind the climber; the scene picks its colours. */
-  wall?: Omit<WallView, 'width' | 'rock' | 'snow'> | null;
+  wall?: Omit<WallView, 'width' | 'height' | 'rock' | 'snow'> | null;
+  /** What is pinned to the mountain: facts, landings, tier lines, the answer chip. */
+  markers?: Omit<MarkersView, 'width' | 'height' | 'progress'> | null;
 }
 
 type Rgb = [number, number, number];
@@ -109,8 +112,19 @@ export function drawScene(ctx: CanvasRenderingContext2D, view: SceneView): void 
       x: view.wall.x + nearX,
       base: view.wall.base + nearY,
       width,
+      height,
       rock: mix(ramp(GROUND_TINT, p), horizon, 0.35),
       snow: smoothstep(0.35, 0.6, p),
+    });
+  }
+  if (view.markers) {
+    drawMarkers(ctx, {
+      ...view.markers,
+      x: view.markers.x + nearX,
+      base: view.markers.base + nearY,
+      width,
+      height,
+      progress: p,
     });
   }
   if (view.climber) {

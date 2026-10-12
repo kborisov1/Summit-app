@@ -3,7 +3,7 @@ import { Background } from '../background/Background';
 import { promptSets as bundledSets } from '../game/content';
 import { dayNumber, selectSet, toDayKey } from '../game/daily';
 import { createRun, currentPrompt, runReducer, type RunState } from '../game/run';
-import { hasReachedSummit, SUMMIT_ALTITUDE } from '../game/scoring';
+import { hasReachedSummit } from '../game/scoring';
 import type { PromptSet } from '../game/types';
 import {
   browserStore,
@@ -16,6 +16,7 @@ import {
 } from '../storage/progress';
 import { AltitudeMeter } from './AltitudeMeter';
 import { Feedback } from './Feedback';
+import { Landing } from './Landing';
 import { PromptCard } from './PromptCard';
 import { ResultScreen } from './ResultScreen';
 import { StartScreen } from './StartScreen';
@@ -44,6 +45,8 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
   const climberRef = useRef<HTMLDivElement>(null);
   const [typing, setTyping] = useState(false);
   const [lowTime, setLowTime] = useState(false);
+  // Results the player has seen the landing banner for; the next prompt waits until then.
+  const [seen, setSeen] = useState(0);
 
   // A finished run is folded into progress; an earlier result for today wins.
   const progress = useMemo(
@@ -59,26 +62,50 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
   const altitude = today ? today.altitude : run.altitude;
   const prompt = currentPrompt(run);
   const lastResult = run.results.at(-1);
+  const landing = run.results.length > seen ? lastResult : undefined;
   const climb = useMemo(
-    () => (lastResult ? { id: run.results.length, rarity: lastResult.rarity } : null),
+    () =>
+      lastResult ? { id: run.results.length, rarity: lastResult.rarity, answer: lastResult.answer ?? '' } : null,
     [lastResult, run.results.length],
+  );
+  // Where each answer landed: the running total of the gains up to it.
+  const landings = useMemo(
+    () =>
+      run.results.flatMap((r, i) =>
+        r.rarity === null || r.answer === null
+          ? []
+          : [{ altitude: run.results.slice(0, i + 1).reduce((sum, x) => sum + x.gain, 0), rarity: r.rarity, answer: r.answer }],
+      ),
+    [run.results],
   );
 
   return (
     <>
       <Background
-        progress={Math.min(1, altitude / SUMMIT_ALTITUDE)}
+        altitude={altitude}
         climb={climb}
+        landings={landings}
         climberAnchor={climberRef}
         cues={{ typing, lowTime, missId: run.miss ? `${run.results.length}-${run.miss.count}` : null }}
       />
-      <div className="layout">
+      <div className={lowTime ? 'layout low-time' : 'layout'}>
         <header className="topbar">
           <h1 className="title">Summit</h1>
           <AltitudeMeter altitude={altitude} />
         </header>
-        <main className={prompt && started && !today ? 'stage stage--run' : 'stage'}>
-          {today ? (
+        <main className={landing || (prompt && started && !today) ? 'stage stage--run' : 'stage'}>
+          {landing ? (
+            <Landing
+              key={run.results.length}
+              result={landing}
+              question={run.prompts[run.results.length - 1].question}
+              number={run.results.length}
+              total={run.prompts.length}
+              last={run.status === 'finished'}
+              onContinue={() => setSeen(run.results.length)}
+              climberRef={climberRef}
+            />
+          ) : today ? (
             <ResultScreen result={today} prompts={set.prompts} streak={currentStreak(progress, todayKey)} />
           ) : !started ? (
             <StartScreen onStart={() => setStarted(true)} />
@@ -93,7 +120,6 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
               climberRef={climberRef}
               onTypingChange={setTyping}
               onLowTimeChange={setLowTime}
-              feedback={!run.miss && lastResult && <Feedback key={run.results.length} result={lastResult} />}
               notice={run.miss && <Feedback key={`miss-${run.results.length}-${run.miss.count}`} miss={run.miss.input} />}
             />
           ) : null}

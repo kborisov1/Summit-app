@@ -20,6 +20,15 @@ export const RARITY_LABEL: Record<Rarity, string> = {
   5: 'Legendary',
 };
 
+/** A line of colour for each tier on the landing banner. */
+export const RARITY_QUIP: Record<Rarity, string> = {
+  1: 'The answer everyone reaches for.',
+  2: 'A step off the beaten trail.',
+  3: 'Few climbers come this way.',
+  4: 'Thin air, rare thinking.',
+  5: 'Hardly anyone has stood here.',
+};
+
 export function gainFor(rarity: Rarity | null): number {
   return rarity === null ? 0 : RARITY_GAIN[rarity];
 }

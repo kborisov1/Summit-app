@@ -12,8 +12,6 @@ interface Props {
   total: number;
   onSubmit: (input: string) => void;
   onTimeout: () => void;
-  /** What the last answer earned, floating at the top of the climbing area. */
-  feedback?: ReactNode;
   /** A short note just above the answer bar, such as a wrong answer. */
   notice?: ReactNode;
   /** The empty box the background draws the climber and its rock face into. */
@@ -31,7 +29,6 @@ export function PromptCard({
   total,
   onSubmit,
   onTimeout,
-  feedback,
   notice,
   climberRef,
   onTypingChange,
@@ -73,9 +70,6 @@ export function PromptCard({
         </h2>
       </header>
       <div className="prompt__scene">
-        <div className="feedback-slot" aria-live="polite">
-          {feedback}
-        </div>
         <div className="prompt__wall" ref={climberRef} aria-hidden="true" />
       </div>
       <div className="notice-slot" aria-live="polite">

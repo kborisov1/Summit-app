@@ -283,6 +283,7 @@ body {
 /* Run screen: the question up top, the climber in the middle, the answer bar at the bottom. */
 
 .stage--run {
+  --bar-height: 80px;
   justify-content: stretch;
   padding-bottom: 0;
 }
@@ -327,6 +328,127 @@ body {
   align-items: center;
 }
 
+/* Each new question rises in; the answered one drifts up and blurs away. */
+.prompt__head {
+  animation: question-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.landing .prompt__head {
+  animation: none;
+}
+
+.landing__gone {
+  animation: question-gone 0.5s ease-in both;
+}
+
+@keyframes question-in {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+}
+
+@keyframes question-gone {
+  to {
+    opacity: 0;
+    filter: blur(3px);
+    transform: translateY(-24px) scale(0.92);
+  }
+}
+
+/* Landing: where the answer took the climber, shown once it arrives. */
+.landing__banner {
+  --tier-color: var(--ink-soft);
+  margin-top: 8px;
+  padding: 18px 28px 16px;
+  text-align: center;
+  border-radius: var(--radius);
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  box-shadow: 0 24px 60px -28px rgba(30, 36, 60, 0.55), 0 0 0 2px color-mix(in srgb, var(--tier-color) 45%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.25);
+  animation: banner-in 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) var(--arrival, 0ms) both;
+}
+
+.landing__banner.miss {
+  --tier-color: var(--miss);
+}
+
+.landing__tier {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: clamp(1.8rem, 5vw, 2.6rem);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--tier-color);
+}
+
+.landing__answer {
+  margin: 4px 0 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.landing__gain {
+  margin: 2px 0 0;
+  font-size: 1.05rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--tier-color);
+}
+
+.landing__quip {
+  margin: 6px 0 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  color: var(--ink-soft);
+}
+
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+/* Matches the answer bar's height, so the climber stays put between the two. */
+.landing__bar {
+  height: var(--bar-height);
+  margin-top: calc(2.6rem + 10px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.landing__next {
+  min-width: 200px;
+  animation: banner-in 0.5s ease-out var(--arrival, 0ms) both;
+}
+
+/* Under ten seconds the screen's edges throb softly. */
+.layout.low-time::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  box-shadow: inset 0 0 90px 12px rgba(176, 96, 60, 0.4);
+  animation: edge-throb 1.2s ease-in-out infinite;
+}
+
+@keyframes edge-throb {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
 /* Empty: the background draws the rock face and climber here, the climber's
    base near the bottom edge and the highest tier line near the top. */
 .prompt__wall {
@@ -335,6 +457,7 @@ body {
 }
 
 .prompt__bar {
+  height: var(--bar-height);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -370,6 +493,10 @@ body {
 }
 
 @media (max-width: 480px) {
+  .stage--run {
+    --bar-height: 72px;
+  }
+
   .prompt__bar {
     gap: 8px;
     padding: 8px;
@@ -455,18 +582,7 @@ body {
   outline-offset: 2px;
 }
 
-/* Feedback for the last answer */
-
-.feedback-slot {
-  min-height: 2.6rem;
-  margin: 12px 0 4px;
-  display: flex;
-  align-items: flex-end;
-}
-
-.feedback-slot .feedback {
-  animation: float-up 4.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
+/* Wrong-answer note */
 
 .notice-slot {
   min-height: 2.6rem;
@@ -517,26 +633,6 @@ body {
 .tier-3 { --tier-color: var(--tier-3); }
 .tier-4 { --tier-color: var(--tier-4); }
 .tier-5 { --tier-color: var(--tier-5); }
-
-/* Rises above the climber as it climbs, then drifts off once it arrives. */
-@keyframes float-up {
-  0% {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  12% {
-    opacity: 1;
-    transform: none;
-  }
-  80% {
-    opacity: 1;
-    transform: translateY(-6px);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-14px);
-  }
-}
 
 @keyframes notice {
   0% {
@@ -625,8 +721,11 @@ body {
   }
 
   .feedback,
-  .feedback-slot .feedback,
-  .notice-slot .feedback {
+  .notice-slot .feedback,
+  .prompt__head,
+  .landing__gone,
+  .landing__banner,
+  .layout.low-time::after {
     animation: none;
   }
 }

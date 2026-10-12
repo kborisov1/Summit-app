@@ -43,6 +43,16 @@ function answer(text: string) {
   fireEvent.click(screen.getByRole('button', { name: 'Climb' }));
 }
 
+/** Leaves the landing banner for the next prompt, or the result after the last one. */
+function climbOn() {
+  fireEvent.click(screen.getByRole('button', { name: /Climb on|See your climb/ }));
+}
+
+function answerAndClimbOn(text: string) {
+  answer(text);
+  climbOn();
+}
+
 const meterValue = () => screen.getByRole('meter', { name: 'Altitude' }).getAttribute('aria-valuenow');
 
 describe('App run flow', () => {
@@ -53,12 +63,23 @@ describe('App run flow', () => {
     expect(meterValue()).toBe('0');
   });
 
-  it('gains altitude for a match and shows the tier', () => {
+  it('gains altitude for a match and lands on a banner with the tier', () => {
     renderApp();
     answer('legendry');
     expect(meterValue()).toBe('1400');
-    expect(screen.getByText('Legendary', { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Legendary' })).toBeInTheDocument();
+    expect(screen.getByText('“Legendary”')).toBeInTheDocument();
+    expect(screen.getByText('+1,400 m')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('waits on the landing banner until the player climbs on', () => {
+    renderApp();
+    answer('Rare');
+    expect(screen.queryByRole('heading', { name: 'Question 1?' })).not.toBeInTheDocument();
+    climbOn();
     expect(screen.getByRole('heading', { name: 'Question 1?' })).toBeInTheDocument();
+    expect(screen.getByText('Step 2 of 7')).toBeInTheDocument();
   });
 
   it('stays on the same question after a wrong answer', () => {
@@ -79,8 +100,12 @@ describe('App run flow', () => {
 
   it('shows results and saves progress after the last prompt', () => {
     const store = renderApp();
-    for (let i = 0; i < 6; i++) answer('Legendary');
+    for (let i = 0; i < 6; i++) answerAndClimbOn('Legendary');
     answer('Rare');
+    // Progress is saved as soon as the last answer lands, before the banner is dismissed.
+    expect(loadProgress(store).results['2026-10-12']).toBeDefined();
+    expect(screen.getByRole('button', { name: 'See your climb' })).toBeInTheDocument();
+    climbOn();
 
     expect(screen.getByRole('heading', { name: 'You reached the summit' })).toBeInTheDocument();
     expect(meterValue()).toBe('8848');
@@ -93,7 +118,7 @@ describe('App run flow', () => {
 
   it('shows today’s result when the run was already played', () => {
     const first = renderApp();
-    for (let i = 0; i < 7; i++) answer('Common');
+    for (let i = 0; i < 7; i++) answerAndClimbOn('Common');
     cleanup();
 
     renderApp(memoryStore({ [STORAGE_KEY]: first.data[STORAGE_KEY] }), true);
@@ -127,7 +152,9 @@ describe('App prompt timer', () => {
     advance(PROMPT_TIME_LIMIT_MS);
 
     expect(meterValue()).toBe('0');
-    expect(screen.getByText('Out of time. No altitude gained.')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Out of time' })).toBeInTheDocument();
+    expect(screen.getByText('No altitude gained')).toBeInTheDocument();
+    climbOn();
     expect(screen.getByText('Step 2 of 7')).toBeInTheDocument();
     expect(screen.getByRole('textbox')).toHaveValue('');
   });
@@ -136,16 +163,29 @@ describe('App prompt timer', () => {
     vi.useFakeTimers();
     renderApp();
     advance(20_000);
-    answer('Rare');
+    answerAndClimbOn('Rare');
     expect(screen.getByRole('timer')).toHaveTextContent('30');
     advance(PROMPT_TIME_LIMIT_MS - 1_000);
     expect(screen.getByText('Step 2 of 7')).toBeInTheDocument();
   });
 
+  it('holds the next prompt’s clock while the landing banner is up', () => {
+    vi.useFakeTimers();
+    renderApp();
+    answer('Rare');
+    advance(PROMPT_TIME_LIMIT_MS * 2);
+    expect(screen.getByRole('heading', { name: 'Rare' })).toBeInTheDocument();
+    climbOn();
+    expect(screen.getByRole('timer')).toHaveTextContent('30');
+  });
+
   it('shows timed-out prompts on the result screen', () => {
     vi.useFakeTimers();
     renderApp();
-    for (let i = 0; i < 7; i++) advance(PROMPT_TIME_LIMIT_MS);
+    for (let i = 0; i < 7; i++) {
+      advance(PROMPT_TIME_LIMIT_MS);
+      climbOn();
+    }
 
     expect(screen.getByRole('heading', { name: 'You climbed to 0 m' })).toBeInTheDocument();
     expect(screen.getAllByText(/Out of time/)).toHaveLength(7);
