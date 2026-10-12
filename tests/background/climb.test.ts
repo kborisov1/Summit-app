@@ -84,19 +84,36 @@ describe('climbFx', () => {
     }
   });
 
-  it('adds more leaps for rarer answers, ending legendary in a giant one', () => {
+  it('hops on every tier, leaping higher for rarer answers', () => {
     const leaps = (r: 1 | 2 | 3 | 4 | 5) => {
       const samples = Array.from({ length: 400 }, (_, i) => climbFx(r, (climbDuration(r) * i) / 399).hop);
       const count = samples.filter((h, i) => h > 0 && (samples[i - 1] ?? 0) === 0).length;
       return { count, peak: Math.max(...samples) };
     };
-    expect(leaps(1).count).toBe(0);
-    expect(leaps(2).count).toBe(0);
-    expect(leaps(3).count).toBe(1);
-    expect(leaps(4).count).toBe(2);
-    expect(leaps(5).count).toBe(1);
-    expect(leaps(4).peak).toBeGreaterThan(leaps(3).peak);
-    expect(leaps(5).peak).toBeGreaterThan(leaps(4).peak);
+    // Common ends in one small hop; every rarer tier has at least two.
+    expect(leaps(1).count).toBe(1);
+    for (const r of [2, 3, 4, 5] as const) expect(leaps(r).count).toBe(2);
+    for (let r = 2; r <= 5; r++) {
+      expect(leaps(r as 2 | 3 | 4 | 5).peak).toBeGreaterThan(leaps((r - 1) as 1 | 2 | 3 | 4).peak);
+    }
+  });
+
+  it('crouches to wind up before each leap and to soak up its landing', () => {
+    for (const r of [1, 2, 3, 4, 5] as const) {
+      const d = climbArrival(r);
+      const samples = Array.from({ length: 600 }, (_, i) => climbFx(r, (d * i) / 599));
+      // The deepest crouch comes on the ground, never mid-air.
+      const deepest = samples.reduce((a, b) => (b.crouch > a.crouch ? b : a));
+      expect(deepest.crouch).toBeGreaterThan(0.3);
+      expect(deepest.hop).toBe(0);
+      // Each take-off is preceded by a crouch.
+      samples.forEach((fx, i) => {
+        if (fx.hop > 0 && samples[i - 1]?.hop === 0) {
+          expect(Math.max(...samples.slice(Math.max(0, i - 30), i).map((s) => s.crouch))).toBeGreaterThan(0.2);
+        }
+      });
+    }
+    expect(climbFx(3, climbDuration(3)).crouch).toBe(0);
   });
 
   it('ends a legendary climb with a cheer', () => {
