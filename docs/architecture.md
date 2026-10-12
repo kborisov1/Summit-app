@@ -27,7 +27,9 @@ All dependencies are free and open source. No paid services are part of the stac
 
 Prompts and answers are JSON files in the repository. They are loaded at build time and bundled with the app.
 
-Each prompt has an id, a question, and a list of accepted answers. Each answer has a canonical form, optional aliases, and a rarity value. The rarity value is a number on a fixed scale, where higher means rarer and gives a larger altitude gain.
+Each prompt has an id, a question, a list of accepted answers, and optional known wrong answers. Each answer has a canonical form, optional aliases, and a `rarity` value. The rarity value is the tier number from scope "Altitude Scoring" (1 to 5), where higher means rarer and gives a larger altitude gain.
+
+Each daily run is one prompt set, stored as one file in `content/sets/<id>.json`. The types live in `src/game/types.ts`, and `src/game/validate.ts` checks every shipped set in the test suite, so a set that breaks a scope rule fails `make test`.
 
 Content lives in `content/` and is separate from code, so new prompt sets can be added without touching components.
 
@@ -35,7 +37,7 @@ Rarity values come from an offline Node script. The script queries Wikipedia pag
 
 ## Daily Selection
 
-The day's prompts are chosen deterministically from the local date. A simple version: take the day number since a fixed epoch, then index into the prompt sets with that number modulo the set size.
+The day's prompts are chosen deterministically from the local date. Take the day number since a fixed epoch (2026-01-01, day 0), then index into the prompt sets, ordered by id, with that number modulo the number of sets.
 
 The local date is used so that a player sees the same run all day. Because the logic is pure and deterministic, it is easy to unit test, and it needs no server.
 
@@ -103,6 +105,4 @@ Deployment is deferred. When hosting is chosen, the Vite `base` setting must mat
 
 ## Open Questions
 
-- Final rarity scale: how many tiers, and what altitude gain each one gives.
-- Whether wrong answers should cost anything, or only fail to gain altitude.
 - Hosting target and custom domain, to be decided when the game is ready.
