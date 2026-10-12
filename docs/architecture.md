@@ -58,11 +58,13 @@ Each prompt can record known wrong answers so that near misses that are clearly 
 
 The background is a single full-screen canvas behind the UI. It draws layered mountains, drifting clouds, and weather that changes with the altitude gained. Rendering uses canvas gradients and procedural noise, with no image assets.
 
-`scene.ts` draws one frame from the progress and the camera effects. `climb.ts` turns each answer's rarity into a timed camera move (travel, footstep sway, stumble shake, updraft, glow). Both are pure and have no React imports. Ambient motion (tree sway, mist, haze, cloud swell) derives from `time` inside `scene.ts`, using smooth seeded noise and per-slot seeded gusts instead of pure sine waves, so it is aperiodic but still deterministic for a given `time`. With reduced motion, `time` stops, so the scene is still and jumps straight to the new altitude and skips the camera effects.
+`scene.ts` draws one frame from the progress and the camera effects. `climb.ts` turns each answer's rarity into a timed camera move (travel, footstep sway, stumble shake, updraft, glow) and the climber's motion (gait, stride, leg phase, hop, cheer, stumble). `climber.ts` draws the climber and its ledge; `scene.ts` calls it and picks its colours from the zone. The climber stays fixed on screen and the ledge scrolls under it by the distance walked, with the leg cycle tied to that distance so the feet do not slide. Both are pure and have no React imports. Ambient motion (tree sway, mist, haze, cloud swell) derives from `time` inside `scene.ts`, using smooth seeded noise and per-slot seeded gusts instead of pure sine waves, so it is aperiodic but still deterministic for a given `time`. With reduced motion, `time` stops, so the scene is still and jumps straight to the new altitude and skips the camera effects.
 
 The animation loop runs in a `useEffect` and reads progress from a ref, so the React render cycle is not tied to frame updates. The loop pauses when the tab is hidden and respects `prefers-reduced-motion`.
 
 The altitude meter is a regular React component, not part of the canvas, so it stays readable and accessible.
+
+The UI decides where the climber stands. The prompt card renders an empty box between the question and the answer bar, and `Background` reads that box's position each frame through a ref and draws the climber with its feet on the box's bottom edge and its height matching the box. CSS therefore controls the climber's size and place on every screen, and the answer feedback can sit just above it in the DOM. When the box is not on the page, the climber fades out.
 
 ## State and Persistence
 
