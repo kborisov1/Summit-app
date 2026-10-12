@@ -4,6 +4,8 @@
  * The scene passes through forest, alpine, glacier, and death-zone bands as
  * progress rises (scope "Experience").
  */
+import { drawClimber, type ClimberView } from './climber';
+
 export interface SceneView {
   width: number;
   height: number;
@@ -16,6 +18,8 @@ export interface SceneView {
   shake?: number;
   rush?: number;
   flash?: number;
+  /** The climber, when one is on screen; the scene picks its colours. */
+  climber?: Omit<ClimberView, 'time' | 'rock' | 'snow' | 'ink'> | null;
 }
 
 type Rgb = [number, number, number];
@@ -93,6 +97,18 @@ export function drawScene(ctx: CanvasRenderingContext2D, view: SceneView): void 
   drawDawn(ctx, view, 0.4 * (1 - smoothstep(0.12, 0.34, p)));
   drawMotes(ctx, view, 1 - smoothstep(0.1, 0.32, p));
   drawGustStreaks(ctx, view, 1 - smoothstep(0.1, 0.32, p));
+  if (view.climber) {
+    drawClimber(ctx, {
+      ...view.climber,
+      // The climber is nearest the camera, so it moves most with each step.
+      x: view.climber.x + (view.shake ?? 0) * width * 1.4,
+      y: view.climber.y - (view.bob ?? 0) * height * 1.4,
+      time: view.time,
+      rock: mix(ramp(GROUND_TINT, p), horizon, 0.3),
+      snow: smoothstep(0.35, 0.6, p),
+      ink: mix(DARK, horizon, 0.12),
+    });
+  }
   drawStormShade(ctx, width, height, view.time, storm);
   drawSnow(ctx, view, storm);
   drawStreaks(ctx, view, view.rush ?? 0);

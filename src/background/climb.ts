@@ -1,8 +1,8 @@
 import type { Rarity } from '../game/types';
 
 /**
- * The camera move played after each answer (scope "Experience").
- * `rarity` is null for a wrong answer or a timeout.
+ * The camera move and climber motion played after each answer (scope
+ * "Experience"). `rarity` is null for a timeout.
  */
 export interface ClimbFx {
   /** 0..1, how far the camera has travelled from the old altitude to the new one. */
@@ -15,6 +15,20 @@ export interface ClimbFx {
   rush: number;
   /** 0..1, strength of the arrival glow. */
   flash: number;
+  /** Strides the climber has covered so far, for scrolling the ground. */
+  distance: number;
+  /** Position in the leg cycle; whole numbers have the feet together. */
+  phase: number;
+  /** 0..1, how energetic the gait is: a walk at 0, a run at 1. Fixed per tier. */
+  gait: number;
+  /** 0..1, how wide the climber's legs and arms swing. */
+  stride: number;
+  /** Lift off the ground, in climber heights. */
+  hop: number;
+  /** 0..1, arms raised in triumph. */
+  cheer: number;
+  /** 0..1, knees buckling in a stumble. */
+  stumble: number;
   done: boolean;
 }
 
@@ -22,16 +36,30 @@ interface Tier {
   duration: number;
   rush: number;
   flash: number;
+  /** Whole strides, so the climber ends with the feet together. */
+  strides: number;
+  gait: number;
+  /** Whether the climb ends in a leap and a cheer. */
+  leap: boolean;
 }
 
-// Rarer answers climb longer and with more drama.
+// Rarer answers climb longer and with more drama, and the climber puts in
+// more effort: a walk, a hike, a jog, a bounding run, then a run and a leap.
 const TIERS: Record<Rarity, Tier> = {
-  1: { duration: 1.4, rush: 0, flash: 0 },
-  2: { duration: 1.8, rush: 0.2, flash: 0 },
-  3: { duration: 2.2, rush: 0.45, flash: 0.35 },
-  4: { duration: 2.6, rush: 0.7, flash: 0.6 },
-  5: { duration: 3.2, rush: 1, flash: 1 },
+  1: { duration: 1.4, rush: 0, flash: 0, strides: 2, gait: 0, leap: false },
+  2: { duration: 1.8, rush: 0.2, flash: 0, strides: 3, gait: 0.25, leap: false },
+  3: { duration: 2.2, rush: 0.45, flash: 0.35, strides: 5, gait: 0.5, leap: false },
+  4: { duration: 2.6, rush: 0.7, flash: 0.6, strides: 7, gait: 0.75, leap: false },
+  5: { duration: 3.2, rush: 1, flash: 1, strides: 8, gait: 1, leap: true },
 };
+
+/** Share of a leaping climb spent running up to the leap. */
+const RUN_UP = 0.62;
+/** Share of a leaping climb spent in the air. */
+const LEAP_TIME = 0.2;
+/** Strides covered in the air. */
+const LEAP_DISTANCE = 2;
+const LEAP_HEIGHT = 0.45;
 
 const STUMBLE_DURATION = 0.7;
 const STEP_RATE = 2.2;
@@ -54,6 +82,8 @@ export function climbFx(rarity: Rarity | null, elapsed: number): ClimbFx {
       shake: 0.006 * Math.sin(elapsed * 38) * decay,
       rush: 0,
       flash: 0,
+      ...STANDING,
+      stumble: Math.sin(Math.PI * Math.min(1, u * 1.6)) ** 2,
       done,
     };
   }
@@ -70,8 +100,43 @@ export function climbFx(rarity: Rarity | null, elapsed: number): ClimbFx {
     rush: tier.rush * swell,
     // The glow builds toward arrival, then fades out.
     flash: tier.flash * Math.sin(Math.PI * u ** 1.6),
+    ...climberMotion(tier, u),
     done,
   };
+}
+
+/** The climber at rest: feet together, arms down. */
+export const STANDING = { distance: 0, phase: 0, gait: 0, stride: 0, hop: 0, cheer: 0, stumble: 0 } as const;
+
+function climberMotion(tier: Tier, u: number) {
+  if (!tier.leap) {
+    const phase = tier.strides * easeInOut(u);
+    // The swing opens as the climber sets off and closes on arrival.
+    return { ...STANDING, distance: phase, phase, gait: tier.gait, stride: Math.sin(Math.PI * u) ** 0.5 };
+  }
+  const run = Math.min(1, u / RUN_UP);
+  const air = Math.min(1, Math.max(0, (u - RUN_UP) / LEAP_TIME));
+  // The run-up builds speed into the leap instead of slowing to a stop.
+  const phase = tier.strides * (run - Math.sin(Math.PI * run) / Math.PI);
+  return {
+    ...STANDING,
+    distance: phase + LEAP_DISTANCE * easeInOut(air),
+    phase,
+    gait: tier.gait,
+    stride: Math.sin((Math.PI / 2) * Math.min(1, run * 4)) * (1 - air),
+    hop: LEAP_HEIGHT * Math.sin(Math.PI * air),
+    // Arms go up as the climber lands and stay up while the glow fades.
+    cheer: smoothstep(RUN_UP + LEAP_TIME * 0.5, RUN_UP + LEAP_TIME, u) * (1 - smoothstep(0.94, 1, u)),
+  };
+}
+
+function easeInOut(u: number): number {
+  return (1 - Math.cos(Math.PI * u)) / 2;
+}
+
+function smoothstep(a: number, b: number, v: number): number {
+  const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
+  return t * t * (3 - 2 * t);
 }
 
 // cubic-bezier(0.3, 0.15, 0.2, 1): sets off at once, without a jolt, and

@@ -37,11 +37,47 @@ describe('climbFx', () => {
     expect(Math.max(...speeds)).toBeLessThan(2.75);
   });
 
-  it('stumbles without climbing on a wrong answer', () => {
+  it('starts and ends the climber at rest with the feet together', () => {
+    for (const r of [1, 2, 3, 4, 5] as const) {
+      const start = climbFx(r, 0);
+      const end = climbFx(r, climbDuration(r));
+      expect(start.distance).toBe(0);
+      expect(start.stride).toBe(0);
+      expect(Number.isInteger(Math.round(end.phase * 1e6) / 1e6)).toBe(true);
+      expect(end.stride).toBeLessThan(1e-6);
+      expect(end.hop).toBeLessThan(1e-6);
+      expect(end.cheer).toBeLessThan(1e-6);
+    }
+  });
+
+  it('makes the climber work harder and cover more ground for rarer answers', () => {
+    const end = (r: 1 | 2 | 3 | 4 | 5) => climbFx(r, climbDuration(r));
+    for (let r = 2; r <= 5; r++) {
+      const prev = end((r - 1) as 1 | 2 | 3 | 4);
+      const next = end(r as 2 | 3 | 4 | 5);
+      expect(next.gait).toBeGreaterThan(prev.gait);
+      expect(next.distance).toBeGreaterThan(prev.distance);
+    }
+  });
+
+  it('ends a legendary climb with a leap and a cheer', () => {
+    const d = climbDuration(5);
+    const samples = Array.from({ length: 200 }, (_, i) => climbFx(5, (d * i) / 199));
+    expect(Math.max(...samples.map((fx) => fx.hop))).toBeGreaterThan(0.3);
+    expect(Math.max(...samples.map((fx) => fx.cheer))).toBeGreaterThan(0.9);
+    for (const r of [1, 2, 3, 4] as const) {
+      expect(climbFx(r, climbDuration(r) * 0.85).hop).toBe(0);
+      expect(climbFx(r, climbDuration(r) * 0.85).cheer).toBe(0);
+    }
+  });
+
+  it('stumbles without climbing on a timeout', () => {
     const fx = climbFx(null, 0.1);
     expect(fx.travel).toBe(0);
     expect(fx.shake).not.toBe(0);
     expect(fx.rush).toBe(0);
+    expect(fx.distance).toBe(0);
+    expect(fx.stumble).toBeGreaterThan(0);
     expect(climbFx(null, climbDuration(null)).done).toBe(true);
   });
 });
