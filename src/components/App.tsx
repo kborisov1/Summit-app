@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Background } from '../background/Background';
 import { promptSets as bundledSets } from '../game/content';
 import { dayNumber, selectSet, toDayKey } from '../game/daily';
@@ -41,6 +41,7 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
   const [saved] = useState(() => loadProgress(store));
   const [started, setStarted] = useState(false);
   const [run, dispatch] = useReducer(runReducer, set, createRun);
+  const climberRef = useRef<HTMLDivElement>(null);
 
   // A finished run is folded into progress; an earlier result for today wins.
   const progress = useMemo(
@@ -66,35 +67,30 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
       <Background
         progress={Math.min(1, altitude / SUMMIT_ALTITUDE)}
         climb={climb}
+        climberAnchor={climberRef}
       />
       <div className="layout">
         <header className="topbar">
           <h1 className="title">Summit</h1>
           <AltitudeMeter altitude={altitude} />
         </header>
-        <main className="stage">
+        <main className={prompt && started && !today ? 'stage stage--run' : 'stage'}>
           {today ? (
             <ResultScreen result={today} prompts={set.prompts} streak={currentStreak(progress, todayKey)} />
           ) : !started ? (
             <StartScreen onStart={() => setStarted(true)} />
           ) : prompt ? (
-            <>
-              <div className="feedback-slot" aria-live="polite">
-                {run.miss ? (
-                  <Feedback key={`miss-${run.results.length}-${run.miss.count}`} miss={run.miss.input} />
-                ) : (
-                  lastResult && <Feedback key={run.results.length} result={lastResult} />
-                )}
-              </div>
-              <PromptCard
-                key={prompt.id}
-                prompt={prompt}
-                number={run.promptIndex + 1}
-                total={run.prompts.length}
-                onSubmit={(input) => dispatch({ type: 'submit', input })}
-                onTimeout={() => dispatch({ type: 'timeout' })}
-              />
-            </>
+            <PromptCard
+              key={prompt.id}
+              prompt={prompt}
+              number={run.promptIndex + 1}
+              total={run.prompts.length}
+              onSubmit={(input) => dispatch({ type: 'submit', input })}
+              onTimeout={() => dispatch({ type: 'timeout' })}
+              climberRef={climberRef}
+              feedback={!run.miss && lastResult && <Feedback key={run.results.length} result={lastResult} />}
+              notice={run.miss && <Feedback key={`miss-${run.results.length}-${run.miss.count}`} miss={run.miss.input} />}
+            />
           ) : null}
         </main>
       </div>

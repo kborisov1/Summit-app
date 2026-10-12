@@ -6,6 +6,7 @@
   --accent: #3f4a7a;
   --accent-ink: #f7f2ea;
   --miss: #8a7f78;
+  --low: #b0603c;
   --tier-1: #7d8794;
   --tier-2: #6a8c76;
   --tier-3: #4c7d98;
@@ -279,67 +280,71 @@ body {
   backdrop-filter: blur(18px) saturate(1.25);
 }
 
-/* The quiz card is tinted and softened so it sits in the scene, not on top of it. */
-.card.prompt {
-  padding: 28px;
+/* Run screen: the question up top, the climber in the middle, the answer bar at the bottom. */
+
+.stage--run {
+  justify-content: stretch;
+  padding-bottom: 0;
 }
 
-.prompt__meta {
+.prompt {
+  flex: 1;
+  width: 100%;
+  max-width: 720px;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+  flex-direction: column;
+}
+
+.prompt__head {
+  padding-top: 2vh;
+  text-align: center;
+  text-shadow: 0 1px 14px rgba(255, 248, 240, 0.75);
 }
 
 .prompt__step {
-  margin: 0 0 6px;
+  margin: 0 0 8px;
   font-size: 0.8rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-soft);
 }
 
-.prompt__clock {
-  font-size: 0.85rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-soft);
-}
-
-.prompt__clock.low {
-  color: var(--miss);
-}
-
-.prompt__timebar {
-  height: 4px;
-  margin: 0 0 14px;
-  border-radius: 999px;
-  background: rgba(43, 50, 69, 0.12);
-  overflow: hidden;
-}
-
-.prompt__timefill {
-  height: 100%;
-  background: var(--accent);
-  transform-origin: left;
-  transition: transform 0.25s linear;
-}
-
-.prompt__meta:has(.low) + .prompt__timebar .prompt__timefill {
-  background: var(--miss);
-}
-
 .prompt__question {
-  margin: 0 0 18px;
+  max-width: 22ch;
+  margin: 0 auto;
   font-family: var(--serif);
-  font-size: 2rem;
+  font-size: clamp(1.7rem, 4.5vw, 2.6rem);
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.18;
+  text-wrap: balance;
 }
 
-.prompt__row {
+.prompt__scene {
+  flex: 1;
+  min-height: 150px;
   display: flex;
-  gap: 10px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Empty: the background draws the climber here, feet on the bottom edge. */
+.prompt__climber {
+  width: 40px;
+  height: clamp(48px, 11vh, 96px);
+}
+
+.prompt__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: 999px;
+  background: var(--paper);
+  border: 1px solid var(--paper-edge);
+  box-shadow: 0 24px 60px -28px rgba(30, 36, 60, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  backdrop-filter: blur(18px) saturate(1.25);
 }
 
 .prompt__input {
@@ -355,9 +360,75 @@ body {
   outline: none;
 }
 
+.prompt__input::placeholder {
+  color: rgba(91, 99, 119, 0.6);
+}
+
 .prompt__input:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(63, 74, 122, 0.2);
+}
+
+@media (max-width: 480px) {
+  .prompt__bar {
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .prompt__input {
+    padding: 12px 14px;
+  }
+
+  .prompt__bar .button {
+    padding: 12px 18px;
+  }
+}
+
+/* Timer ring */
+
+.timer {
+  --ring: var(--accent);
+  position: relative;
+  flex: none;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+}
+
+.timer.low {
+  --ring: var(--low);
+}
+
+.timer__ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.timer__track,
+.timer__fill {
+  fill: none;
+}
+
+.timer__track {
+  stroke: rgba(43, 50, 69, 0.12);
+}
+
+.timer__fill {
+  stroke: var(--ring);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.25s linear, stroke 0.4s ease;
+}
+
+.timer__count {
+  font-size: 1.05rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--ring);
+  transition: color 0.4s ease;
 }
 
 .button {
@@ -388,8 +459,25 @@ body {
 
 .feedback-slot {
   min-height: 2.6rem;
+  margin-bottom: 18px;
   display: flex;
   align-items: flex-end;
+}
+
+.feedback-slot .feedback {
+  animation: float-up 4.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.notice-slot {
+  min-height: 2.6rem;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.notice-slot .feedback {
+  animation: notice 3s ease both;
 }
 
 .feedback {
@@ -429,6 +517,41 @@ body {
 .tier-3 { --tier-color: var(--tier-3); }
 .tier-4 { --tier-color: var(--tier-4); }
 .tier-5 { --tier-color: var(--tier-5); }
+
+/* Rises above the climber as it climbs, then drifts off once it arrives. */
+@keyframes float-up {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  12% {
+    opacity: 1;
+    transform: none;
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-6px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+}
+
+@keyframes notice {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  10%,
+  80% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
 
 @keyframes rise {
   from {
@@ -497,11 +620,13 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .meter__fill,
-  .prompt__timefill {
+  .timer__fill {
     transition: none;
   }
 
-  .feedback {
+  .feedback,
+  .feedback-slot .feedback,
+  .notice-slot .feedback {
     animation: none;
   }
 }
