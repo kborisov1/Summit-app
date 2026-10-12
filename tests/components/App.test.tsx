@@ -115,9 +115,9 @@ describe('App prompt timer', () => {
   it('counts down from 30 seconds', () => {
     vi.useFakeTimers();
     renderApp();
-    expect(screen.getByRole('timer')).toHaveTextContent('30s');
+    expect(screen.getByRole('timer')).toHaveTextContent('30');
     advance(10_000);
-    expect(screen.getByRole('timer')).toHaveTextContent('20s');
+    expect(screen.getByRole('timer')).toHaveTextContent('20');
   });
 
   it('moves on with no altitude when time runs out, ignoring unsubmitted text', () => {
@@ -137,7 +137,7 @@ describe('App prompt timer', () => {
     renderApp();
     advance(20_000);
     answer('Rare');
-    expect(screen.getByRole('timer')).toHaveTextContent('30s');
+    expect(screen.getByRole('timer')).toHaveTextContent('30');
     advance(PROMPT_TIME_LIMIT_MS - 1_000);
     expect(screen.getByText('Step 2 of 7')).toBeInTheDocument();
   });
