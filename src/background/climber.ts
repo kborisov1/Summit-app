@@ -1,6 +1,7 @@
 /**
  * Pure canvas drawing for the runner (scope "Experience"), seen side-on and
- * facing up the mountain. There is no ground: it runs up through the scenery
+ * facing whichever way it is heading, its body tilted into its motion. There
+ * is no ground: it runs up through the scenery
  * on puffs of mist, leaps on rarer answers, and stands on a soft cushion of
  * mist between them. Between answers it stays alive: it breathes, fidgets now
  * and then, looks up while the player types, grows restless as time runs low,
@@ -18,6 +19,10 @@ export interface ClimberView {
   y: number;
   /** Standing height of the figure, in CSS pixels. */
   size: number;
+  /** Which way the runner faces: 1 right, -1 left, passing through 0 as it turns. */
+  facing: number;
+  /** Whole-body tilt about the hip, in radians; positive leans right. */
+  tilt: number;
   /** 0..1 */
   alpha: number;
   time: number;
@@ -132,7 +137,16 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   const lowest = Math.min(...legs.map(({ foot }) => foot.y));
   const flight = 0.05 * effort * stride * Math.abs(Math.sin(cycle(0)));
   const hipY = -lowest + pose.hop + flight + restless + bounce - 0.05 * slip;
-  const at = (p: Point): Point => ({ x: view.x + p.x * size, y: view.y - (p.y + hipY) * size });
+  // Body points are drawn facing right, then mirrored to the runner's facing
+  // and tilted about the hip.
+  const face = view.facing;
+  const cos = Math.cos(view.tilt);
+  const sin = Math.sin(view.tilt);
+  const at = (p: Point): Point => {
+    const lx = p.x * size * face;
+    const ly = -p.y * size;
+    return { x: view.x + lx * cos - ly * sin, y: view.y - hipY * size + lx * sin + ly * cos };
+  };
 
   const shoulderRel = { x: Math.sin(lean) * TORSO, y: Math.cos(lean) * TORSO };
   const arm = (i: number) => {
@@ -168,11 +182,11 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   // Backpack, behind the torso.
   const hip = at({ x: 0, y: 0 });
   const shoulder = at(shoulderRel);
+  const pack = at({ x: Math.sin(lean) * TORSO * 0.58 - Math.cos(lean) * 0.075, y: Math.cos(lean) * TORSO * 0.58 + Math.sin(lean) * 0.075 });
   ctx.save();
-  ctx.translate(
-    hip.x + (shoulder.x - hip.x) * 0.58 - Math.cos(lean) * size * 0.075,
-    hip.y + (shoulder.y - hip.y) * 0.58 - Math.sin(lean) * size * 0.075,
-  );
+  ctx.translate(pack.x, pack.y);
+  ctx.rotate(view.tilt);
+  ctx.scale(face, 1);
   ctx.rotate(lean);
   ctx.fillStyle = rgba(mix(PACK, ink, 0.25), 1);
   ctx.beginPath();
@@ -188,7 +202,7 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   const facing = Math.max(-1, Math.min(1, 1 - 1.8 * gesture('glance') - 1.2 * Math.abs(shakeHead)));
   const tilt = lean * 1.1 - 0.35 * look;
   const head = at({ x: shoulderRel.x + Math.sin(tilt) * NECK, y: shoulderRel.y + Math.cos(tilt) * NECK });
-  drawHead(ctx, head, HEAD * size, facing, look, near);
+  drawHead(ctx, head, HEAD * size, facing * Math.sign(face || 1), look, near);
 
   stroke(ctx, legPoints(0), near, size * 0.085);
   stroke(ctx, arm(0), near, size * 0.065);
@@ -199,7 +213,7 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
  * The runner has no ground: it stands on a soft cushion of mist and kicks
  * up puffs that drift down behind it as it runs.
  */
-function drawMist(ctx: CanvasRenderingContext2D, { x, y, size }: ClimberView, pose: ClimberPose) {
+function drawMist(ctx: CanvasRenderingContext2D, { x, y, size, facing }: ClimberView, pose: ClimberPose) {
   const prev = ctx.globalAlpha;
   const grounded = Math.max(0, 1 - pose.hop * 3);
   const cushion = ctx.createRadialGradient(x, y, 0, x, y, size * 0.4);
@@ -222,7 +236,7 @@ function drawMist(ctx: CanvasRenderingContext2D, { x, y, size }: ClimberView, po
     ctx.globalAlpha = prev * 0.45 * kick * (1 - t);
     ctx.fillStyle = rgba(MIST, 1);
     ctx.beginPath();
-    ctx.arc(x - size * (0.08 + 0.3 * t), y + size * 0.5 * t, size * (0.04 + 0.07 * t), 0, Math.PI * 2);
+    ctx.arc(x - facing * size * (0.08 + 0.3 * t), y + size * 0.5 * t, size * (0.04 + 0.07 * t), 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.globalAlpha = prev;
