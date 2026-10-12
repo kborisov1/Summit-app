@@ -321,6 +321,7 @@ body {
 }
 
 .prompt__scene {
+  position: relative;
   flex: 1;
   min-height: 220px;
   display: flex;
@@ -357,9 +358,17 @@ body {
 }
 
 /* Landing: where the answer took the climber, shown once it arrives. */
+/* Floats over the climbing area rather than taking room from it, so the
+   runner keeps its size when the banner appears. */
 .landing__banner {
   --tier-color: var(--ink-soft);
-  margin-top: 8px;
+  position: absolute;
+  top: 8px;
+  inset-inline: 0;
+  z-index: 1;
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
   padding: 18px 28px 16px;
   text-align: center;
   border-radius: var(--radius);
