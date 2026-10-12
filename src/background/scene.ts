@@ -23,14 +23,14 @@ type Ramp = [number, Rgb][];
 
 // Colour keyframes by progress: forest, alpine, glacier storm, death zone, summit sunrise.
 const SKY_TOP: Ramp = [
-  [0, [164, 178, 196]],
+  [0, [112, 142, 188]],
   [0.3, [138, 166, 204]],
   [0.6, [118, 128, 150]],
   [0.85, [44, 44, 98]],
   [1, [58, 62, 118]],
 ];
 const SKY_HORIZON: Ramp = [
-  [0, [232, 218, 198]],
+  [0, [250, 214, 176]],
   [0.3, [240, 222, 192]],
   [0.6, [204, 208, 216]],
   [0.85, [196, 164, 176]],
@@ -38,7 +38,7 @@ const SKY_HORIZON: Ramp = [
 ];
 // Tint for the nearer ridges: pine green, bare rock, blue ice.
 const GROUND_TINT: Ramp = [
-  [0, [62, 92, 74]],
+  [0, [34, 108, 78]],
   [0.22, [128, 108, 92]],
   [0.5, [140, 160, 192]],
   [1, [150, 168, 200]],
@@ -75,6 +75,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, view: SceneView): void 
   drawSky(ctx, view, p, horizon);
   drawStars(ctx, view, smoothstep(0.74, 0.9, p) * (1 - 0.5 * smoothstep(0.96, 1, p)));
   drawSun(ctx, view, p);
+  drawDawn(ctx, view, 1 - smoothstep(0.12, 0.34, p));
   drawBirds(ctx, view, smoothstep(0.1, 0.2, p) * (1 - smoothstep(0.38, 0.48, p)));
 
   // Haze fades as the climber rises above it.
@@ -87,6 +88,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, view: SceneView): void 
 
   drawCloudSea(ctx, view, smoothstep(0.66, 0.86, p));
   drawMist(ctx, view, 1 - smoothstep(0, 0.3, p));
+  drawDawn(ctx, view, 0.4 * (1 - smoothstep(0.12, 0.34, p)));
+  drawMotes(ctx, view, 1 - smoothstep(0.1, 0.32, p));
   drawGustStreaks(ctx, view, 1 - smoothstep(0.1, 0.32, p));
   drawStormShade(ctx, width, height, view.time, storm);
   drawSnow(ctx, view, storm);
@@ -326,8 +329,8 @@ function drawMist(ctx: CanvasRenderingContext2D, view: SceneView, strength: numb
     puff(ctx, x, y, rx, rx * 0.16, 0.3 * strength);
   }
   const mist = ctx.createLinearGradient(0, height * 0.5, 0, height);
-  mist.addColorStop(0, rgba([236, 230, 222], 0));
-  mist.addColorStop(1, rgba([236, 230, 222], 0.55 * strength));
+  mist.addColorStop(0, rgba([250, 226, 200], 0));
+  mist.addColorStop(1, rgba([250, 226, 200], 0.5 * strength));
   ctx.fillStyle = mist;
   ctx.fillRect(0, 0, width, height);
 }
@@ -387,9 +390,46 @@ function drawFlash(ctx: CanvasRenderingContext2D, { width, height }: SceneView, 
   ctx.fillRect(0, 0, width, height);
 }
 
+
+/** Low golden light over the valley, strongest at the trailhead. */
+function drawDawn(ctx: CanvasRenderingContext2D, { width, height, time }: SceneView, strength: number) {
+  if (strength <= 0) return;
+  const x = width * 0.28;
+  const y = height * 0.5;
+  const r = Math.max(width, height) * 0.62;
+  const glow = ctx.createRadialGradient(x, y, 0, x, y, r);
+  const pulse = 0.94 + 0.06 * Math.sin(time * 0.5);
+  glow.addColorStop(0, rgba([255, 226, 170], 0.85 * strength * pulse));
+  glow.addColorStop(0.35, rgba([255, 200, 150], 0.35 * strength));
+  glow.addColorStop(1, rgba([255, 200, 150], 0));
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, width, height);
+}
+
+const MOTE_COUNT = 40;
+
+/** Seeds and pollen drifting in the breeze; each gust shoves them along. */
+function drawMotes(ctx: CanvasRenderingContext2D, { width, height, time }: SceneView, strength: number) {
+  if (strength <= 0) return;
+  const cycle = Math.floor(time / 10);
+  const since = time - cycle * 10 - gustStart(cycle);
+  const push = (cycle + smoothstep(0, GUST_CROSSING + 1, since)) * width * 0.35;
+  ctx.fillStyle = rgba([255, 222, 150], 0.85 * strength);
+  ctx.beginPath();
+  for (let i = 0; i < MOTE_COUNT; i++) {
+    const speed = 6 + hash(i * 1.9) * 14;
+    const x = (((hash(i * 4.1) * width + time * speed + push * (0.5 + hash(i * 7.9))) % width) + width) % width;
+    const y = height * (0.12 + hash(i * 6.3) * 0.7) + Math.sin(time * 0.7 + i * 2.3) * height * 0.012;
+    const r = 1 + hash(i * 2.7) * 1.8;
+    ctx.moveTo(x + r, y);
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+  }
+  ctx.fill();
+}
+
 /** Seconds a gust takes to sweep across the screen from left to right. */
 const GUST_CROSSING = 2;
-const GUST_WISPS = 9;
+const GUST_WISPS = 14;
 
 /** Pale wisps of air that sweep across the sky with each gust. */
 function drawGustStreaks(ctx: CanvasRenderingContext2D, { width, height, time }: SceneView, strength: number) {
@@ -398,7 +438,7 @@ function drawGustStreaks(ctx: CanvasRenderingContext2D, { width, height, time }:
   const since = time - cycle * 10 - gustStart(cycle);
   if (since < 0 || since > GUST_CROSSING + 1) return;
   ctx.lineCap = 'round';
-  ctx.lineWidth = Math.max(1, height * 0.0026);
+  ctx.lineWidth = Math.max(1, height * 0.003);
   for (let i = 0; i < GUST_WISPS; i++) {
     // Each wisp trails a little behind the front, at its own height.
     const head = (since - hash(cycle * 7.1 + i * 3.7) * 0.6) / GUST_CROSSING;
@@ -407,7 +447,7 @@ function drawGustStreaks(ctx: CanvasRenderingContext2D, { width, height, time }:
     if (x < -length || x > width + length) continue;
     const fade = Math.sin(clamp01(head) * Math.PI);
     if (fade <= 0.02) continue;
-    const y = height * (0.12 + hash(i * 2.9 + cycle) * 0.5);
+    const y = height * (0.08 + hash(i * 2.9 + cycle) * 0.62);
     const rise = Math.sin(head * 5 + i) * height * 0.012;
     const curl = height * (0.008 + hash(i * 8.3) * 0.012);
     const line = ctx.createLinearGradient(x - length, 0, x, 0);
