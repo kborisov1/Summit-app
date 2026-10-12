@@ -399,3 +399,21 @@ body {
     animation: none;
   }
 }
+
+/* Start screen */
+
+.start__title {
+  margin: 0 0 8px;
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  line-height: 1.25;
+}
+
+.start__text {
+  margin: 0 0 20px;
+  color: var(--ink-soft);
+}
+
+.start__button {
+  width: 100%;
+}

@@ -58,6 +58,7 @@ Design rules:
 
 ## Experience
 
+- A start screen with a one-line description and a Start button opens each run. The first prompt and its timer begin only after Start is clicked. A player who already finished today's run goes straight to the result.
 - Painterly visual style with soft gradients and a muted palette.
 - An interactive background with layered mountains, drifting clouds, and weather that reacts to the player's progress.
 - A simple, readable altitude meter as the main HUD element.
