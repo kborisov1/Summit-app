@@ -64,12 +64,12 @@ interface Tier {
 // uncommon skips twice, rare adds a proper leap, very rare two bigger ones,
 // and legendary ends in a giant leap over the last lines and a cheer.
 const TIERS: Record<Rarity, Tier> = {
-  1: { duration: 2.0, rush: 0, flash: 0, strides: 2, effort: 0, leaps: [{ from: 0.62, to: 0.84, height: 0.18 }] },
+  1: { duration: 2.0, rush: 0, flash: 0, strides: 4, effort: 0, leaps: [{ from: 0.62, to: 0.84, height: 0.18 }] },
   2: {
     duration: 2.4,
     rush: 0.2,
     flash: 0,
-    strides: 3,
+    strides: 5,
     effort: 0.25,
     leaps: [
       { from: 0.35, to: 0.53, height: 0.2 },
@@ -80,7 +80,7 @@ const TIERS: Record<Rarity, Tier> = {
     duration: 2.8,
     rush: 0.45,
     flash: 0.35,
-    strides: 3,
+    strides: 5,
     effort: 0.5,
     leaps: [
       { from: 0.18, to: 0.32, height: 0.22 },
@@ -91,7 +91,7 @@ const TIERS: Record<Rarity, Tier> = {
     duration: 3.2,
     rush: 0.7,
     flash: 0.6,
-    strides: 3,
+    strides: 6,
     effort: 0.75,
     leaps: [
       { from: 0.25, to: 0.5, height: 0.55 },
@@ -102,7 +102,7 @@ const TIERS: Record<Rarity, Tier> = {
     duration: 3.8,
     rush: 1,
     flash: 1,
-    strides: 4,
+    strides: 7,
     effort: 1,
     leaps: [
       { from: 0.18, to: 0.32, height: 0.3 },

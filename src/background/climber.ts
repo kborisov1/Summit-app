@@ -114,17 +114,30 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   // dropping down on its heels for a moment.
   const crouch = Math.min(1, pose.crouch + 0.85 * gesture('crouch'));
 
-  const lean = 0.08 + 0.25 * effort * stride + 0.25 * tuck + 0.3 * slip + 0.35 * crouch - 0.08 * cheer - 0.06 * look + breath;
-  const legSwing = stride * (0.35 + 0.35 * effort);
-  const armSwing = stride * (0.4 + 0.5 * effort);
+  // Even a common answer is run with intent; rarer ones are run all out.
+  const energy = 0.45 + 0.55 * effort;
   const cycle = (i: number) => 2 * Math.PI * (pose.phase + i * 0.5);
+  // 0 as a foot strikes, 1 at full stride; twice per cycle.
+  const step = Math.abs(Math.sin(cycle(0)));
+  // Running uphill, the body drives forward and pumps a little with each step.
+  const drive = stride * energy * (0.42 + 0.06 * Math.sin(4 * Math.PI * pose.phase));
+  const lean = 0.08 + drive + 0.25 * tuck + 0.3 * slip + 0.35 * crouch - 0.08 * cheer - 0.06 * look + breath;
+  const legSwing = stride * (0.5 + 0.35 * energy);
+  const armSwing = stride * (0.7 + 0.5 * energy);
+  // The torso squashes as a foot strikes and stretches at push-off.
+  const torso = TORSO * (1 + 0.07 * stride * energy * (2 * step - 1));
 
   // Legs from the hip, in runner heights with y up.
   const legs = [0, 1].map((i) => {
     const c = cycle(i);
     let thigh = legSwing * Math.sin(c) + 0.1 * lean;
-    // Knees lift as each leg swings through.
-    let bend = 0.08 + stride * (0.3 + 0.9 * effort) * Math.max(0, Math.cos(c)) + 0.6 * slip;
+    // Knees drive up as each leg swings through, and the heel kicks up behind
+    // after push-off.
+    let bend =
+      0.08 +
+      stride * (0.5 + 1.0 * energy) * Math.max(0, Math.cos(c)) +
+      stride * 0.5 * energy * Math.max(0, -Math.sin(c)) +
+      0.6 * slip;
     // In a leap the near knee drives up and the far leg trails.
     thigh += tuck * (i === 0 ? 1 : -0.4);
     bend += tuck * (i === 0 ? 1.5 : 0.9);
@@ -141,7 +154,8 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   });
   // Drop the body until the lower foot rests on the runner's line.
   const lowest = Math.min(...legs.map(({ foot }) => foot.y));
-  const flight = 0.05 * effort * stride * Math.abs(Math.sin(cycle(0)));
+  // Each stride springs the body up off the trailing foot.
+  const flight = 0.09 * energy * stride * step;
   const hipY = -lowest + pose.hop + flight + restless + bounce - 0.05 * slip;
   // Body points are drawn facing right, then mirrored to the runner's facing
   // and tilted about the hip.
@@ -154,11 +168,12 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
     return { x: view.x + lx * cos - ly * sin, y: view.y - hipY * size + lx * sin + ly * cos };
   };
 
-  const shoulderRel = { x: Math.sin(lean) * TORSO, y: Math.cos(lean) * TORSO };
+  const shoulderRel = { x: Math.sin(lean) * torso, y: Math.cos(lean) * torso };
   const arm = (i: number) => {
     // Arms swing against the legs on the same side.
     let angle = -armSwing * Math.sin(cycle(i)) + 0.3 * lean;
-    let elbow = 0.3 + 1.1 * effort * stride;
+    // Arms pump hard, elbows bent near a right angle.
+    let elbow = 0.3 + stride * (1.1 + 0.35 * energy);
     const blendTo = (a: number, e: number, t: number) => {
       angle += (a - angle) * t;
       elbow += (e - elbow) * t;
@@ -190,7 +205,7 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   // Backpack, behind the torso.
   const hip = at({ x: 0, y: 0 });
   const shoulder = at(shoulderRel);
-  const pack = at({ x: Math.sin(lean) * TORSO * 0.58 - Math.cos(lean) * 0.075, y: Math.cos(lean) * TORSO * 0.58 + Math.sin(lean) * 0.075 });
+  const pack = at({ x: Math.sin(lean) * torso * 0.58 - Math.cos(lean) * 0.075, y: Math.cos(lean) * torso * 0.58 + Math.sin(lean) * 0.075 });
   ctx.save();
   ctx.translate(pack.x, pack.y);
   ctx.rotate(view.tilt);
@@ -208,7 +223,8 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   const miss = mood.sinceMiss / HEAD_SHAKE_TIME;
   const shakeHead = miss < 1 ? Math.sin(mood.sinceMiss * 24) * (1 - miss) : 0;
   const facing = Math.max(-1, Math.min(1, 1 - 1.8 * gesture('glance') - 1.2 * Math.abs(shakeHead)));
-  const tilt = lean * 1.1 - 0.35 * look;
+  // The head nods with each footfall.
+  const tilt = lean * 1.1 - 0.35 * look + 0.12 * stride * (1 - step);
   const head = at({ x: shoulderRel.x + Math.sin(tilt) * NECK, y: shoulderRel.y + Math.cos(tilt) * NECK });
   drawHead(ctx, head, HEAD * size, facing * Math.sign(face || 1), look, near);
 
