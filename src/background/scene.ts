@@ -221,7 +221,8 @@ function drawTrees(
     if (hash(k * 5.9 + depth * 17) > density * 0.75) continue;
     const u = (k + hash(k * 2.3)) / TREE_SLOTS;
     // Treetops lean in a slow breeze; each tree is a little out of step.
-    const sway = Math.sin(time * 0.9 + k * 1.7) * width * 0.0012;
+    // A gust sweeps left to right, so it reaches each tree a moment apart.
+    const sway = Math.sin(time * 0.9 + k * 1.7) * width * 0.0012 + gust(time - u * 0.9) * width * 0.003;
     const x = u * width + offsetX;
     const h = height * (0.018 + 0.022 * depth) * (0.7 + hash(k * 3.7) * 0.6);
     const y = crest(u) + h * 0.15;
@@ -299,7 +300,7 @@ function drawMist(ctx: CanvasRenderingContext2D, view: SceneView, strength: numb
   // Slow wisps roll through the valley.
   for (let i = 0; i < 4; i++) {
     const span = width * 1.5;
-    const x = ((hash(i * 6.3) * span + wind * (4 + hash(i * 2.1) * 4)) % span) - width * 0.25;
+    const x = ((hash(i * 6.3) * span + wind * (4 + hash(i * 2.1) * 4)) % span) - width * 0.25 + gust(time - 0.3) * width * 0.012;
     const y = height * (0.74 + hash(i * 3.9) * 0.18) + Math.sin(time * 0.25 + i) * height * 0.006;
     const rx = width * (0.16 + hash(i * 8.7) * 0.1);
     puff(ctx, x, y, rx, rx * 0.16, 0.3 * strength);
@@ -363,6 +364,14 @@ function drawFlash(ctx: CanvasRenderingContext2D, { width, height }: SceneView, 
   glow.addColorStop(1, rgba(GOLD, 0));
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, width, height);
+}
+
+/** A brief puff of wind, 0..1: about 1.4 s long, every 8-12 s. */
+function gust(time: number): number {
+  const cycle = Math.floor(time / 10);
+  const t = time - cycle * 10 - 1 - hash(cycle * 2.9) * 6;
+  if (t < 0 || t > 1.4) return 0;
+  return Math.sin((t / 1.4) * Math.PI) ** 2;
 }
 
 /** Fractal value noise in 0..1, used for ridgelines. */
