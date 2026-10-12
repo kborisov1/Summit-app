@@ -1,0 +1,9 @@
+node_modules/
+dist/
+coverage/
+*.local
+.env
+.env.*
+backups/
+.DS_Store
+CLAUDE.md
