@@ -5,6 +5,7 @@ import type { Rarity } from '../game/types';
 import { climbFx, STANDING } from './climb';
 import { CALM } from './climber';
 import type { Landing } from './markers';
+import { ROAM_START, stepRoam } from './roam';
 import { drawScene } from './scene';
 
 /** One answer's climb; a new `id` starts a new climb. */
@@ -91,7 +92,7 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
     let wind = 0;
     // The climb in progress: where it runs from and to, and when it began.
     let seenClimbId = climbRef.current?.id ?? null;
-    let active: { event: ClimbEvent; from: number; to: number; start: number } | null = null;
+    let active: { event: ClimbEvent; from: number; to: number; start: number; startX: number } | null = null;
     // The climbing area and how visible it is.
     let area: { x: number; base: number; size: number; room: number } | null = null;
     let presence = 0;
@@ -100,6 +101,7 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
     let tension = 0;
     let seenMissId = cuesRef.current.missId;
     let missAt = -Infinity;
+    let roam = ROAM_START;
     let last = performance.now();
     let frame = 0;
     let width = 0;
@@ -122,7 +124,7 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
       const event = climbRef.current;
       if (event && event.id !== seenClimbId) {
         seenClimbId = event.id;
-        active = { event, from: camera, to: target, start: time };
+        active = { event, from: camera, to: target, start: time, startX: roam.x };
       }
       const cue = cuesRef.current;
       if (cue.missId !== seenMissId) {
@@ -155,13 +157,28 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
       }
 
       const pxPerMetre = height / METRES_PER_SCREEN;
+      const range = area ? Math.min(width * 0.3, area.size * 1.6) : 0;
+      if (reducedMotion) roam = ROAM_START;
+      else if (area) {
+        roam = stepRoam(roam, {
+          dt,
+          time,
+          size: area.size,
+          range,
+          climb: active && { id: active.event.id, startX: active.startX },
+          typing: cue.typing,
+          hop: fx?.hop ?? 0,
+        });
+      }
+      const runnerX = area ? area.x + roam.x : 0;
+      const pose = fx ?? (roam.walking > 0.02 ? { ...STANDING, phase: roam.walkPhase, stride: roam.walking * 0.8 } : STANDING);
       // Mid-climb the runner pulls ahead of the camera, up the screen, then
       // the camera catches up as it arrives.
       const lead =
         area && active && fx ? fx.lead * Math.min(area.room * 0.45, (active.to - active.from) * pxPerMetre * 0.3) : 0;
       const climberY = area ? area.base - lead : 0;
-      // Half the runner's lane: facts and pennants sit either side of it.
-      const half = area ? Math.min(width * 0.3, Math.max(area.size * 1.3, 70)) : 0;
+      // Half the runner's lane, wide enough for its roaming: facts sit either side of it.
+      const half = area ? Math.min(width * 0.36, range + Math.max(area.size * 0.6, 40)) : 0;
 
       drawScene(ctx, {
         width,
@@ -199,7 +216,7 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
               ? {
                   text: active.event.answer,
                   rarity: active.event.rarity,
-                  x: area.x,
+                  x: runnerX,
                   // Rides above the runner's head, leaps included.
                   y: climberY - (fx.hop + 1.12) * area.size,
                   alpha: fx.chip,
@@ -208,11 +225,13 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
               : null,
         },
         climber: area && {
-          x: area.x,
+          x: runnerX,
           y: climberY,
           size: area.size,
+          facing: roam.facing,
+          tilt: roam.tilt,
           alpha: presence,
-          pose: fx ?? STANDING,
+          pose,
           mood: reducedMotion ? CALM : { look, tension, sinceMiss: time - missAt },
         },
       });
@@ -273,3 +292,4 @@ function climbingArea(box: DOMRect) {
 function approach(value: number, target: number, step: number): number {
   return value + Math.sign(target - value) * Math.min(Math.abs(target - value), step);
 }
+
