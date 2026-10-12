@@ -5,8 +5,9 @@
  * on puffs of mist, leaps on rarer answers, and stands on a soft cushion of
  * mist between them. Between answers it stays alive: it breathes, shifts its
  * weight, fidgets now and then with a gesture picked so it rarely repeats, bends
- * over, hands on thighs, to watch the answer bar while the player types and nods along with each
- * keystroke, grows restless as time runs low, and shakes its head at a miss.
+ * over, hands on thighs, to watch the answer bar while the player types (nodding
+ * at the first keystroke and now and then after), grows restless as time runs
+ * low, and shakes its head at a miss.
  */
 import type { ClimbFx } from './climb';
 
@@ -39,11 +40,11 @@ export interface ClimberMood {
   tension: number;
   /** Seconds since the last wrong answer, for a head shake. */
   sinceMiss: number;
-  /** Seconds since the last keystroke, for a nod. */
-  sinceKey: number;
+  /** Seconds since the climber last nodded at a keystroke. */
+  sinceNod: number;
 }
 
-export const CALM: ClimberMood = { look: 0, tension: 0, sinceMiss: Infinity, sinceKey: Infinity };
+export const CALM: ClimberMood = { look: 0, tension: 0, sinceMiss: Infinity, sinceNod: Infinity };
 
 // Body proportions, in runner heights, measured up from the feet.
 const THIGH = 0.25;
@@ -61,6 +62,7 @@ const BEANIE: Rgb = [72, 98, 140];
 const SKIN: Rgb = [206, 164, 134];
 
 const HEAD_SHAKE_TIME = 0.7;
+const NOD_TIME = 0.6;
 /** Each gesture and how long it takes, in seconds. */
 const FIDGET_TIMES = {
   stretch: 1.4,
@@ -136,9 +138,10 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   const restless = standing * tension * Math.abs(Math.sin(time * 4.2)) * 0.03;
   // A slow, uneven shift of weight, so it never stands quite still.
   const sway = standing * (0.03 * Math.sin(time * 0.41) + 0.02 * Math.sin(time * 0.97 + 2));
-  // Watching the answer bar, it bends over with its hands on its thighs, nodding at each keystroke.
+  // Watching the answer bar, it bends over with its hands on its thighs and
+  // now and then nods, easing down and back up.
   const watch = look * standing;
-  const nod = watch * 0.18 * Math.exp(-mood.sinceKey * 7);
+  const nod = mood.sinceNod < NOD_TIME ? watch * 0.16 * Math.sin((Math.PI * mood.sinceNod) / NOD_TIME) : 0;
   const gaze = gesture('gaze');
   const bounce = gesture('bounce') * Math.abs(Math.sin((fidget?.t ?? 0) * Math.PI * 3)) * 0.08;
   // Crouching: winding up for a leap, soaking up a landing, or now and then just
