@@ -1,24 +1,32 @@
 import { useEffect, useRef, type RefObject } from 'react';
+import { LANDMARKS } from '../game/landmarks';
+import { RARITY_GAIN, SUMMIT_ALTITUDE } from '../game/scoring';
 import type { Rarity } from '../game/types';
 import { climbFx, HOLDING } from './climb';
 import { CALM } from './climber';
+import type { Landing } from './markers';
 import { drawScene } from './scene';
+import { wallHalfWidth } from './wall';
 
-/** One answer's climb; a new `id` starts a new camera move. */
+/** One answer's climb; a new `id` starts a new climb. */
 export interface ClimbEvent {
   id: number;
-  /** Null for a wrong answer or a timeout. */
+  /** Null for a timeout. */
   rarity: Rarity | null;
+  /** What the player typed, shown riding above the climber. */
+  answer: string;
 }
 
 interface Props {
-  /** 0 at the trailhead, 1 at the summit. */
-  progress: number;
+  /** Raw altitude in metres; the scenery tops out at the summit. */
+  altitude: number;
   climb?: ClimbEvent | null;
+  /** Where earlier answers landed, marked on the mountain. */
+  landings?: readonly Landing[];
   /**
-   * The empty box in the UI the climber climbs in: its base near the
-   * bottom edge, the legendary line near the top. The climber and its rock
-   * face fade out while the box is not on the page.
+   * The empty box in the UI the climber climbs in, its base near the bottom
+   * edge. The climber and the mountain's markers fade out while the box is
+   * not on the page.
    */
   climberAnchor?: RefObject<HTMLElement | null>;
   /** What the player is doing, so the climber can react to it. */
@@ -33,8 +41,9 @@ export interface ClimberCues {
 }
 
 const NO_CUES: ClimberCues = { typing: false, lowTime: false, missId: null };
+const NO_LANDINGS: readonly Landing[] = [];
 
-/** How quickly the scene eases toward a new altitude without a climb, per second. */
+/** How quickly the camera eases toward a new altitude without a climb, per second. */
 const EASE_RATE = 1.6;
 /** The scene is soft, so rendering beyond this pixel density only costs fill rate. */
 const MAX_DPR = 1.5;
@@ -44,23 +53,27 @@ const RUSH_WIND = 6;
 const FADE_RATE = 3;
 /** How quickly the climber's mood follows the player, per second. */
 const MOOD_RATE = 4;
+/** Metres of mountain that fit in one screen height. */
+const METRES_PER_SCREEN = 1150;
 
 /**
- * Full-screen canvas behind the UI. The loop reads progress from a ref so
+ * Full-screen canvas behind the UI. The loop reads its inputs from refs so
  * frames are not tied to React renders (architecture "Rendering").
  */
-export function Background({ progress, climb = null, climberAnchor, cues = NO_CUES }: Props) {
+export function Background({ altitude, climb = null, landings = NO_LANDINGS, climberAnchor, cues = NO_CUES }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const targetRef = useRef(progress);
+  const targetRef = useRef(altitude);
   const climbRef = useRef(climb);
+  const landingsRef = useRef(landings);
   const anchorRef = useRef(climberAnchor);
   const cuesRef = useRef(cues);
   const wakeRef = useRef<() => void>(() => {});
 
   // Runs after every render, so the loop also wakes when the climber's box mounts.
   useEffect(() => {
-    targetRef.current = progress;
+    targetRef.current = altitude;
     climbRef.current = climb;
+    landingsRef.current = landings;
     anchorRef.current = climberAnchor;
     cuesRef.current = cues;
     wakeRef.current();
@@ -73,16 +86,16 @@ export function Background({ progress, climb = null, climberAnchor, cues = NO_CU
 
     const motionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
     let reducedMotion = motionQuery?.matches ?? false;
-    let shown = targetRef.current;
+    // The camera's altitude, in metres.
+    let camera = targetRef.current;
     let time = 0;
     let wind = 0;
-    // The climb in progress: where it started and when.
+    // The climb in progress: where it runs from and to, and when it began.
     let seenClimbId = climbRef.current?.id ?? null;
-    let active: { rarity: Rarity | null; from: number; start: number; scrolled: number } | null = null;
-    // The climbing area, how visible it is, and how far its face has scrolled, in rooms.
+    let active: { event: ClimbEvent; from: number; to: number; start: number } | null = null;
+    // The climbing area and how visible it is.
     let area: { x: number; base: number; size: number; room: number } | null = null;
     let presence = 0;
-    let scrolled = 0;
     // The climber's mood.
     let look = 0;
     let tension = 0;
@@ -110,7 +123,7 @@ export function Background({ progress, climb = null, climberAnchor, cues = NO_CU
       const event = climbRef.current;
       if (event && event.id !== seenClimbId) {
         seenClimbId = event.id;
-        active = { rarity: event.rarity, from: shown, start: time, scrolled };
+        active = { event, from: camera, to: target, start: time };
       }
       const cue = cuesRef.current;
       if (cue.missId !== seenMissId) {
@@ -124,7 +137,7 @@ export function Background({ progress, climb = null, climberAnchor, cues = NO_CU
 
       let fx = null;
       if (reducedMotion) {
-        shown = target;
+        camera = target;
         active = null;
         presence = wanted;
       } else {
@@ -133,37 +146,70 @@ export function Background({ progress, climb = null, climberAnchor, cues = NO_CU
         look = approach(look, cue.typing ? 1 : 0, dt * MOOD_RATE);
         tension = approach(tension, cue.lowTime ? 1 : 0, dt * MOOD_RATE * 0.5);
         if (active) {
-          fx = climbFx(active.rarity, time - active.start);
-          shown = active.from + (target - active.from) * fx.travel;
-          scrolled = active.scrolled + fx.scroll;
+          fx = climbFx(active.event.rarity, time - active.start);
+          camera = active.from + (active.to - active.from) * fx.travel;
           if (fx.done) active = null;
         } else {
-          shown += (target - shown) * Math.min(1, dt * EASE_RATE);
+          camera += (target - camera) * Math.min(1, dt * EASE_RATE);
         }
         wind += dt * (1 + RUSH_WIND * (fx?.rush ?? 0));
       }
+
+      const pxPerMetre = height / METRES_PER_SCREEN;
+      // Mid-climb the climber pulls ahead of the camera, up the screen, then
+      // the camera catches up as it arrives.
+      const lead =
+        area && active && fx ? fx.lead * Math.min(area.room * 0.45, (active.to - active.from) * pxPerMetre * 0.3) : 0;
+      const climberY = area ? area.base - lead : 0;
+      const half = area ? wallHalfWidth(area.size, width) : 0;
+
       drawScene(ctx, {
         width,
         height,
-        progress: shown,
+        progress: Math.min(1, camera / SUMMIT_ALTITUDE),
         time,
         wind,
         bob: fx?.bob,
         shake: fx?.shake,
         rush: fx?.rush,
         flash: fx?.flash,
-        wall: area && {
+        wall: area && { x: area.x, base: area.base, size: area.size, offset: camera * pxPerMetre, alpha: presence },
+        markers: area && {
           x: area.x,
+          half,
           base: area.base,
-          size: area.size,
-          room: area.room,
-          scrolled,
+          camera,
+          pxPerMetre,
           alpha: presence,
-          lines: fx && active?.rarity ? { rarity: active.rarity, alpha: fx.lines, lit: fx.lit, scroll: fx.scroll } : null,
+          landmarks: LANDMARKS,
+          landings: landingsRef.current,
+          lines:
+            active && fx && active.event.rarity
+              ? {
+                  // Lines hang from where this answer's climb truly starts, even if
+                  // the camera had not quite settled from the last one.
+                  from: active.to - RARITY_GAIN[active.event.rarity],
+                  rarity: active.event.rarity,
+                  climber: camera + lead / pxPerMetre,
+                  alpha: fx.lines,
+                  lit: fx.lit,
+                }
+              : null,
+          chip:
+            active && fx && active.event.rarity
+              ? {
+                  text: active.event.answer,
+                  rarity: active.event.rarity,
+                  x: area.x,
+                  y: climberY - area.size * 1.12,
+                  alpha: fx.chip,
+                  lit: fx.lit,
+                }
+              : null,
         },
         climber: area && {
           x: area.x,
-          y: area.base - ((fx?.rise ?? 0) - (fx?.scroll ?? 0)) * area.room,
+          y: climberY,
           size: area.size,
           alpha: presence,
           pose: fx ?? HOLDING,
@@ -217,11 +263,11 @@ export function Background({ progress, climb = null, climberAnchor, cues = NO_CU
   return <canvas ref={canvasRef} className="background" aria-hidden="true" />;
 }
 
-/** The climber's size, base line and climbing room inside the UI's box. */
+/** The climber's size, base line and room to pull ahead inside the UI's box. */
 function climbingArea(box: DOMRect) {
   const size = Math.min(92, Math.max(44, box.height * 0.24));
   const base = box.bottom - size * 0.25;
-  return { x: box.left + box.width / 2, base, size, room: Math.max(size * 0.8, base - box.top - size * 1.15) };
+  return { x: box.left + box.width / 2, base, size, room: Math.max(0, base - box.top - size * 1.6) };
 }
 
 function approach(value: number, target: number, step: number): number {
