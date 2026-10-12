@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent, type ReactNode, type Ref } from 'react';
+import { useEffect, useId, useState, type FormEvent, type ReactNode, type Ref } from 'react';
 import { PROMPT_TIME_LIMIT_MS } from '../game/run';
 import type { Prompt } from '../game/types';
 import { TimerRing } from './TimerRing';
@@ -12,19 +12,46 @@ interface Props {
   total: number;
   onSubmit: (input: string) => void;
   onTimeout: () => void;
-  /** What the last answer earned, floating above the climber. */
+  /** What the last answer earned, floating at the top of the climbing area. */
   feedback?: ReactNode;
   /** A short note just above the answer bar, such as a wrong answer. */
   notice?: ReactNode;
-  /** The empty box the background draws the climber into. */
+  /** The empty box the background draws the climber and its rock face into. */
   climberRef?: Ref<HTMLDivElement>;
+  /** Told whether there is text in the field, so the climber can look up. */
+  onTypingChange?: (typing: boolean) => void;
+  /** Told when time starts running low, so the climber can grow restless. */
+  onLowTimeChange?: (low: boolean) => void;
 }
 
 /** The question at the top, the climber in the middle, the answer bar at the bottom. */
-export function PromptCard({ prompt, number, total, onSubmit, onTimeout, feedback, notice, climberRef }: Props) {
+export function PromptCard({
+  prompt,
+  number,
+  total,
+  onSubmit,
+  onTimeout,
+  feedback,
+  notice,
+  climberRef,
+  onTypingChange,
+  onLowTimeChange,
+}: Props) {
   const [input, setInput] = useState('');
   const questionId = useId();
   const remaining = useCountdown(PROMPT_TIME_LIMIT_MS, onTimeout);
+  const low = remaining <= LOW_TIME_MS;
+  const typing = input.trim() !== '';
+
+  useEffect(() => {
+    onTypingChange?.(typing);
+    return () => onTypingChange?.(false);
+  }, [typing, onTypingChange]);
+
+  useEffect(() => {
+    onLowTimeChange?.(low);
+    return () => onLowTimeChange?.(false);
+  }, [low, onLowTimeChange]);
 
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
@@ -49,13 +76,13 @@ export function PromptCard({ prompt, number, total, onSubmit, onTimeout, feedbac
         <div className="feedback-slot" aria-live="polite">
           {feedback}
         </div>
-        <div className="prompt__climber" ref={climberRef} aria-hidden="true" />
+        <div className="prompt__wall" ref={climberRef} aria-hidden="true" />
       </div>
       <div className="notice-slot" aria-live="polite">
         {notice}
       </div>
       <div className="prompt__bar">
-        <TimerRing remaining={remaining} total={PROMPT_TIME_LIMIT_MS} low={remaining <= LOW_TIME_MS} />
+        <TimerRing remaining={remaining} total={PROMPT_TIME_LIMIT_MS} low={low} />
         <input
           className="prompt__input"
           aria-labelledby={questionId}

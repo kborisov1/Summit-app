@@ -1,7 +1,8 @@
 /**
  * Pure canvas drawing for the climber (scope "Experience"). The climber is
- * seen from behind, scaling the mountain in front of it. It stays put on
- * screen while the scene scrolls past, so its reaches read as the climb.
+ * seen from behind, scaling the rock face in front of it. Between answers it
+ * stays alive: it breathes, fidgets now and then, looks up while the player
+ * types, grows restless as time runs low, and shakes its head at a miss.
  */
 import type { ClimbFx } from './climb';
 
@@ -19,8 +20,20 @@ export interface ClimberView {
   alpha: number;
   time: number;
   pose: ClimberPose;
+  mood: ClimberMood;
   ink: Rgb;
 }
+
+export interface ClimberMood {
+  /** 0..1, looking up the wall while the player types. */
+  look: number;
+  /** 0..1, restless as the prompt's time runs low. */
+  tension: number;
+  /** Seconds since the last wrong answer, for a head shake. */
+  sinceMiss: number;
+}
+
+export const CALM: ClimberMood = { look: 0, tension: 0, sinceMiss: Infinity };
 
 // Body layout and limb lengths, in climber heights, measured up from the feet.
 const HIP = 0.4;
@@ -35,6 +48,36 @@ const SHIN = 0.21;
 
 const WHITE: Rgb = [255, 248, 240];
 const PACK: Rgb = [164, 92, 68];
+const BEANIE: Rgb = [72, 98, 140];
+const SKIN: Rgb = [206, 164, 134];
+
+const HEAD_SHAKE_TIME = 0.7;
+const FIDGET_TIME = 1.4;
+const FIDGETS = ['chalk', 'shake', 'foot', 'glance'] as const;
+
+interface Fidget {
+  kind: (typeof FIDGETS)[number];
+  side: number;
+  /** 0..1, how far into the gesture the climber is. */
+  amount: number;
+  /** 0..1 through the gesture. */
+  t: number;
+}
+
+/** One small gesture every few seconds, at uneven times; more often when tense. */
+function fidgetAt(time: number, tension: number): Fidget | null {
+  const period = 5 - 2.2 * tension;
+  const slot = Math.floor(time / period);
+  const start = slot * period + hash(slot * 3.7) * period * 0.45;
+  const t = (time - start) / FIDGET_TIME;
+  if (t < 0 || t > 1) return null;
+  return {
+    kind: FIDGETS[Math.floor(hash(slot * 5.1) * FIDGETS.length)],
+    side: hash(slot * 8.3) < 0.5 ? -1 : 1,
+    amount: smoothstep(0, 0.3, t) * (1 - smoothstep(0.7, 1, t)),
+    t,
+  };
+}
 
 interface Point {
   x: number;
@@ -43,18 +86,26 @@ interface Point {
 
 export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): void {
   if (view.alpha <= 0.01 || view.size <= 0) return;
-  const { size, pose, time, ink } = view;
+  const { size, pose, time, ink, mood } = view;
   const { effort, reach, cheer, slip } = pose;
-  const holding = 1 - reach;
-  // Quiet breathing while hanging on.
-  const breath = holding * (Math.sin(time * 1.7) + 0.4 * Math.sin(time * 0.63 + 1)) * 0.008;
+  const { look, tension } = mood;
+  const holding = (1 - reach) * (1 - slip) * (1 - cheer);
+  // Breathing while hanging on, quicker and deeper as time runs low.
+  const pace = 1 + tension;
+  const breath = holding * (Math.sin(time * 1.7 * pace) + 0.4 * Math.sin(time * 0.63 * pace + 1)) * 0.008 * (1 + 1.2 * tension);
+  // Fidgets wait while the climber is busy or watching the wall.
+  const fidget = fidgetAt(time, tension);
+  const gesture = (kind: Fidget['kind'], side: number) =>
+    fidget && fidget.kind === kind && fidget.side === side ? fidget.amount * holding * (1 - look) : 0;
   const cycle = (side: number) => 2 * Math.PI * pose.phase + (side < 0 ? 0 : Math.PI);
 
   // Each push from the legs lifts the body a little; a slip drops it.
   const push = reach * (0.025 + 0.03 * effort) * Math.abs(Math.sin(2 * Math.PI * pose.phase));
-  const rise = push + pose.lunge - 0.08 * slip + breath;
-  // The body shifts toward whichever hand is reaching.
-  const sway = reach * 0.03 * Math.sin(2 * Math.PI * pose.phase);
+  const rise = push + 0.08 * pose.lunge - 0.08 * slip + breath;
+  // The body shifts toward whichever hand is reaching, and shifts its weight
+  // restlessly when time runs low.
+  const sway =
+    reach * 0.03 * Math.sin(2 * Math.PI * pose.phase) + holding * tension * 0.014 * Math.sin(time * 2.1 + Math.sin(time * 0.7));
 
   // Positions in climber heights: x right, y up from the feet.
   const hip = { x: sway, y: HIP + rise };
@@ -69,6 +120,11 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
       x: root.x + side * (0.1 + 0.03 * effort * up),
       y: root.y + 0.21 + reach * (0.14 + 0.1 * effort) * (up - 0.3),
     };
+    // Typing has the climber eyeing the next hold, the free hand creeping up.
+    hand.y += 0.03 * look * (side > 0 ? 1 : 0.4);
+    // Chalking dips a hand into the bag at the hip; shaking out lets an arm hang loose.
+    hand = blend(hand, { x: hip.x + side * 0.07, y: hip.y + 0.03 + 0.012 * Math.sin(time * 18) }, gesture('chalk', side));
+    hand = blend(hand, { x: root.x + side * (0.17 + 0.025 * Math.sin(time * 26)), y: root.y - 0.22 }, gesture('shake', side));
     // A slip pulls the hands down off their holds; a cheer throws them up.
     hand = blend(hand, { x: root.x + side * 0.2, y: root.y - 0.05 }, slip);
     hand = blend(hand, { x: root.x + side * 0.16, y: root.y + 0.3 }, cheer);
@@ -81,8 +137,11 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
       x: root.x + side * (0.12 + 0.04 * up * reach),
       y: root.y - 0.36 + reach * (0.1 + 0.08 * effort) * up,
     };
+    // Now and then a foot moves to a better hold.
+    const shift = gesture('foot', side);
+    foot = { x: foot.x + side * 0.05 * shift, y: foot.y + 0.08 * shift };
     // Legs dangle when the feet lose the rock or leave it in a lunge.
-    const dangle = Math.max(slip, Math.min(1, pose.lunge / 0.15));
+    const dangle = Math.max(slip, Math.min(1, pose.lunge * 2.5));
     foot = blend(foot, { x: root.x + side * 0.06, y: root.y - 0.4 }, dangle);
     // Knees splay out, frog-like, as on a steep face.
     return limb(root, foot, THIGH, SHIN, side);
@@ -109,12 +168,14 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
     size * 0.07,
   );
 
-  // The head, then the backpack over the back, which faces us.
-  const head = at({ x: shoulder.x, y: shoulder.y + 0.1 });
-  ctx.fillStyle = body;
-  ctx.beginPath();
-  ctx.arc(head.x, head.y, HEAD * size, 0, Math.PI * 2);
-  ctx.fill();
+  // The head turns to glance down or to shake at a miss, and tips back to look up.
+  const glance = (fidget?.side ?? 0) * (gesture('glance', -1) + gesture('glance', 1));
+  const miss = mood.sinceMiss / HEAD_SHAKE_TIME;
+  const shakeHead = miss < 1 ? Math.sin(mood.sinceMiss * 24) * (1 - miss) * 0.9 : 0;
+  const turn = Math.max(-1, Math.min(1, glance + shakeHead));
+  const head = at({ x: shoulder.x + turn * 0.012, y: shoulder.y + 0.1 + 0.02 * look - 0.02 * Math.abs(glance) });
+  drawHead(ctx, head, HEAD * size, turn, body);
+  if (fidget?.kind === 'chalk' && holding * (1 - look) > 0.5) drawChalk(ctx, at({ x: hip.x + fidget.side * 0.07, y: hip.y + 0.08 }), size, fidget.t);
 
   const pack = at({ x: (hip.x + shoulder.x) / 2, y: hip.y + (shoulder.y - hip.y) * 0.55 });
   ctx.fillStyle = rgba(mix(PACK, ink, 0.2), 1);
@@ -127,6 +188,41 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   ctx.fill();
 
   ctx.globalAlpha = prev;
+}
+
+/** Head from behind in a beanie; the cheek shows on whichever side it turns to. */
+function drawHead(ctx: CanvasRenderingContext2D, centre: Point, r: number, turn: number, body: string) {
+  ctx.save();
+  ctx.fillStyle = body;
+  ctx.beginPath();
+  ctx.arc(centre.x, centre.y, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.clip();
+  if (Math.abs(turn) > 0.02) {
+    ctx.fillStyle = rgba(SKIN, Math.min(1, Math.abs(turn) * 1.4));
+    ctx.beginPath();
+    ctx.ellipse(centre.x + Math.sign(turn) * r * (1.15 - 0.5 * Math.abs(turn)), centre.y + r * 0.25, r * 0.5, r * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = rgba(BEANIE, 1);
+  ctx.fillRect(centre.x - r, centre.y - r, r * 2, r * 0.95);
+  ctx.restore();
+  ctx.fillStyle = rgba(mix(BEANIE, WHITE, 0.4), 1);
+  ctx.beginPath();
+  ctx.arc(centre.x, centre.y - r * 1.02, r * 0.3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+/** A few puffs of chalk dust rising off the hand once it leaves the bag. */
+function drawChalk(ctx: CanvasRenderingContext2D, at: Point, size: number, t: number) {
+  if (t < 0.55) return;
+  const age = (t - 0.55) / 0.45;
+  for (let i = 0; i < 4; i++) {
+    ctx.fillStyle = rgba(WHITE, 0.55 * (1 - age));
+    ctx.beginPath();
+    ctx.arc(at.x + (hash(i * 3.1) - 0.5) * size * 0.12, at.y - age * size * (0.08 + hash(i * 7.7) * 0.08), size * (0.012 + 0.02 * age), 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
 /** A rope running from the harness down the face, swaying a little. */
@@ -170,6 +266,16 @@ function stroke(ctx: CanvasRenderingContext2D, points: Point[], color: string, w
   ctx.moveTo(points[0].x, points[0].y);
   for (const p of points.slice(1)) ctx.lineTo(p.x, p.y);
   ctx.stroke();
+}
+
+function smoothstep(a: number, b: number, v: number): number {
+  const t = Math.min(1, Math.max(0, (v - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+function hash(n: number): number {
+  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
+  return s - Math.floor(s);
 }
 
 function blend(a: Point, b: Point, t: number): Point {

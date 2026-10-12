@@ -321,17 +321,17 @@ body {
 
 .prompt__scene {
   flex: 1;
-  min-height: 150px;
+  min-height: 220px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
 }
 
-/* Empty: the background draws the climber here, feet on the bottom edge. */
-.prompt__climber {
-  width: 40px;
-  height: clamp(48px, 11vh, 96px);
+/* Empty: the background draws the rock face and climber here, the climber's
+   base near the bottom edge and the highest tier line near the top. */
+.prompt__wall {
+  flex: 1;
+  align-self: stretch;
 }
 
 .prompt__bar {
@@ -459,7 +459,7 @@ body {
 
 .feedback-slot {
   min-height: 2.6rem;
-  margin-bottom: 18px;
+  margin: 12px 0 4px;
   display: flex;
   align-items: flex-end;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { climbDuration, climbFx } from '../../src/background/climb';
+import { climbDuration, climbFx, tierLine } from '../../src/background/climb';
 
 describe('climbFx', () => {
   it('travels from the old altitude to the new one', () => {
@@ -50,13 +50,36 @@ describe('climbFx', () => {
     }
   });
 
-  it('makes the climber work harder and make more moves for rarer answers', () => {
+  it('makes the climber work harder and climb higher for rarer answers', () => {
     const end = (r: 1 | 2 | 3 | 4 | 5) => climbFx(r, climbDuration(r));
     for (let r = 2; r <= 5; r++) {
       const prev = end((r - 1) as 1 | 2 | 3 | 4);
       const next = end(r as 2 | 3 | 4 | 5);
       expect(next.effort).toBeGreaterThan(prev.effort);
-      expect(next.phase).toBeGreaterThan(prev.phase);
+      expect(next.rise).toBeGreaterThan(prev.rise);
+    }
+  });
+
+  it('spaces the tier lines by gain, with legendary at the top of the room', () => {
+    const lines = ([1, 2, 3, 4, 5] as const).map(tierLine);
+    expect(lines[4]).toBe(1);
+    for (let i = 1; i < 5; i++) expect(lines[i]).toBeGreaterThan(lines[i - 1]);
+    // Squashed so a common answer is still a visible climb.
+    expect(lines[0]).toBeGreaterThan(130 / 1400);
+  });
+
+  it('climbs to the tier line, then scrolls the wall so the line becomes the base', () => {
+    for (const r of [1, 2, 3, 4, 5] as const) {
+      const d = climbDuration(r);
+      const atLine = climbFx(r, d * 0.72);
+      expect(atLine.rise).toBeCloseTo(tierLine(r), 6);
+      expect(atLine.scroll).toBe(0);
+      expect(atLine.lit).toBeGreaterThan(0.9);
+      const end = climbFx(r, d);
+      expect(end.scroll).toBeCloseTo(tierLine(r), 6);
+      expect(end.rise - end.scroll).toBeCloseTo(0, 6);
+      expect(end.lines).toBe(0);
+      expect(end.lit).toBe(0);
     }
   });
 
@@ -77,6 +100,8 @@ describe('climbFx', () => {
     expect(fx.shake).not.toBe(0);
     expect(fx.rush).toBe(0);
     expect(fx.phase).toBe(0);
+    expect(fx.rise).toBe(0);
+    expect(fx.lines).toBe(0);
     expect(fx.slip).toBeGreaterThan(0);
     expect(climbFx(null, climbDuration(null)).done).toBe(true);
   });

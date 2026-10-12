@@ -42,6 +42,8 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
   const [started, setStarted] = useState(false);
   const [run, dispatch] = useReducer(runReducer, set, createRun);
   const climberRef = useRef<HTMLDivElement>(null);
+  const [typing, setTyping] = useState(false);
+  const [lowTime, setLowTime] = useState(false);
 
   // A finished run is folded into progress; an earlier result for today wins.
   const progress = useMemo(
@@ -68,6 +70,7 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
         progress={Math.min(1, altitude / SUMMIT_ALTITUDE)}
         climb={climb}
         climberAnchor={climberRef}
+        cues={{ typing, lowTime, missId: run.miss ? `${run.results.length}-${run.miss.count}` : null }}
       />
       <div className="layout">
         <header className="topbar">
@@ -88,6 +91,8 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
               onSubmit={(input) => dispatch({ type: 'submit', input })}
               onTimeout={() => dispatch({ type: 'timeout' })}
               climberRef={climberRef}
+              onTypingChange={setTyping}
+              onLowTimeChange={setLowTime}
               feedback={!run.miss && lastResult && <Feedback key={run.results.length} result={lastResult} />}
               notice={run.miss && <Feedback key={`miss-${run.results.length}-${run.miss.count}`} miss={run.miss.input} />}
             />

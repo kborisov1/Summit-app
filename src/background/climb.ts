@@ -1,3 +1,4 @@
+import { RARITY_GAIN } from '../game/scoring';
 import type { Rarity } from '../game/types';
 
 /**
@@ -24,12 +25,23 @@ export interface ClimbFx {
   effort: number;
   /** 0..1, how far the hands and feet reach on each move. */
   reach: number;
-  /** Lunge up the face, in climber heights. */
+  /** 0..1, how far off the rock the climber is in a lunge. */
   lunge: number;
   /** 0..1, both arms raised in triumph. */
   cheer: number;
   /** 0..1, losing the holds and dropping a little. */
   slip: number;
+  /**
+   * How far the climber has climbed up the wall, and how far the wall has
+   * scrolled back down, both as a share of the wall's climbing room. They
+   * meet at the end, so the reached tier line becomes the new base.
+   */
+  rise: number;
+  scroll: number;
+  /** 0..1, how visible the tier lines are. */
+  lines: number;
+  /** 0..1, how brightly the reached tier line is lit. */
+  lit: number;
   done: boolean;
 }
 
@@ -44,22 +56,33 @@ interface Tier {
   lunge: boolean;
 }
 
-// Rarer answers climb longer and with more drama, and the climber works
-// harder: a careful move or two, steady climbing, a quick climb, a scramble,
-// then a scramble that ends in a lunge and a cheer.
+// Rarer answers climb higher and with more drama, and the climber works
+// harder: a careful move, steady climbing, a quick climb, a scramble, then a
+// scramble that ends in a lunge and a cheer.
 const TIERS: Record<Rarity, Tier> = {
-  1: { duration: 1.4, rush: 0, flash: 0, moves: 1, effort: 0, lunge: false },
-  2: { duration: 1.8, rush: 0.2, flash: 0, moves: 2, effort: 0.25, lunge: false },
-  3: { duration: 2.2, rush: 0.45, flash: 0.35, moves: 3, effort: 0.5, lunge: false },
-  4: { duration: 2.6, rush: 0.7, flash: 0.6, moves: 5, effort: 0.75, lunge: false },
-  5: { duration: 3.2, rush: 1, flash: 1, moves: 6, effort: 1, lunge: true },
+  1: { duration: 2.2, rush: 0, flash: 0, moves: 1, effort: 0, lunge: false },
+  2: { duration: 2.6, rush: 0.2, flash: 0, moves: 2, effort: 0.25, lunge: false },
+  3: { duration: 3.0, rush: 0.45, flash: 0.35, moves: 3, effort: 0.5, lunge: false },
+  4: { duration: 3.4, rush: 0.7, flash: 0.6, moves: 4, effort: 0.75, lunge: false },
+  5: { duration: 4.0, rush: 1, flash: 1, moves: 4, effort: 1, lunge: true },
 };
 
-/** Share of a lunging climb spent scrambling up to the lunge. */
-const SCRAMBLE = 0.6;
-/** Share of a lunging climb spent lunging. */
-const LUNGE_TIME = 0.22;
-const LUNGE_HEIGHT = 0.35;
+// The climb's beats, as shares of its duration: climb to the line, hold
+// there while it lights up, then scroll the wall down to make it the base.
+const CLIMB_END = 0.66;
+const SCROLL_START = 0.76;
+/** Share of a lunging climb's ascent covered by the scramble before the lunge. */
+const SCRAMBLE_SHARE = 0.7;
+/** Share of a lunging climb's ascent time spent scrambling. */
+const SCRAMBLE_TIME = 0.72;
+
+/**
+ * Height of a tier's line on the wall, as a share of the climbing room.
+ * Spacing follows the altitude gains, squashed so common is still a climb.
+ */
+export function tierLine(rarity: Rarity): number {
+  return (RARITY_GAIN[rarity] / RARITY_GAIN[5]) ** 0.55;
+}
 
 const STUMBLE_DURATION = 0.7;
 const STEP_RATE = 2.2;
@@ -100,32 +123,53 @@ export function climbFx(rarity: Rarity | null, elapsed: number): ClimbFx {
     rush: tier.rush * swell,
     // The glow builds toward arrival, then fades out.
     flash: tier.flash * Math.sin(Math.PI * u ** 1.6),
-    ...climberMotion(tier, u),
+    ...climberMotion(rarity, tier, u),
     done,
   };
 }
 
 /** The climber at rest, holding on to the face. */
-export const HOLDING = { phase: 0, effort: 0, reach: 0, lunge: 0, cheer: 0, slip: 0 } as const;
+export const HOLDING = {
+  phase: 0,
+  effort: 0,
+  reach: 0,
+  lunge: 0,
+  cheer: 0,
+  slip: 0,
+  rise: 0,
+  scroll: 0,
+  lines: 0,
+  lit: 0,
+} as const;
 
-function climberMotion(tier: Tier, u: number) {
+function climberMotion(rarity: Rarity, tier: Tier, u: number) {
+  const line = tierLine(rarity);
+  const climb = Math.min(1, u / CLIMB_END);
+  const wall = {
+    scroll: line * easeInOut(Math.min(1, Math.max(0, (u - SCROLL_START) / (1 - SCROLL_START)))),
+    lines: smoothstep(0, 0.12, u) * (1 - smoothstep(0.8, 1, u)),
+    lit: smoothstep(CLIMB_END - 0.06, CLIMB_END + 0.04, u) * (1 - smoothstep(0.9, 1, u)),
+  };
   if (!tier.lunge) {
-    const phase = tier.moves * easeInOut(u);
+    const phase = tier.moves * easeInOut(climb);
     // The reach opens as the climber sets off and closes on arrival.
-    return { ...HOLDING, phase, effort: tier.effort, reach: Math.sin(Math.PI * u) ** 0.5 };
+    return { ...HOLDING, ...wall, phase, effort: tier.effort, reach: Math.sin(Math.PI * climb) ** 0.5, rise: line * easeInOut(climb) };
   }
-  const scramble = Math.min(1, u / SCRAMBLE);
-  const air = Math.min(1, Math.max(0, (u - SCRAMBLE) / LUNGE_TIME));
+  const scramble = Math.min(1, climb / SCRAMBLE_TIME);
+  const air = Math.min(1, Math.max(0, (climb - SCRAMBLE_TIME) / (1 - SCRAMBLE_TIME)));
   // The scramble builds speed into the lunge instead of slowing to a stop.
   const phase = tier.moves * (scramble - Math.sin(Math.PI * scramble) / Math.PI);
+  const ascent = SCRAMBLE_SHARE * phase / tier.moves + (1 - SCRAMBLE_SHARE) * Math.sin((Math.PI / 2) * air);
   return {
     ...HOLDING,
+    ...wall,
     phase,
     effort: tier.effort,
     reach: Math.sin((Math.PI / 2) * Math.min(1, scramble * 4)) * (1 - air),
-    lunge: LUNGE_HEIGHT * Math.sin(Math.PI * air),
-    // Arms go up at the top of the lunge and stay up while the glow fades.
-    cheer: smoothstep(SCRAMBLE + LUNGE_TIME * 0.3, SCRAMBLE + LUNGE_TIME, u) * (1 - smoothstep(0.94, 1, u)),
+    lunge: Math.sin(Math.PI * air),
+    rise: line * ascent,
+    // Arms go up as the climber lands on the line and stay up while it glows.
+    cheer: smoothstep(CLIMB_END - 0.04, CLIMB_END + 0.04, u) * (1 - smoothstep(0.9, 1, u)),
   };
 }
 
