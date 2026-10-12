@@ -15,22 +15,21 @@ export interface ClimbFx {
   rush: number;
   /** 0..1, strength of the arrival glow. */
   flash: number;
-  /**
-   * Position in the climbing cycle: one whole cycle is a reach with each hand.
-   * Whole numbers have the climber in its resting hold.
-   */
+  /** Position in the stride cycle; whole numbers have the feet together. */
   phase: number;
-  /** 0..1, how hard the climber works: careful moves at 0, a scramble at 1. Fixed per tier. */
+  /** 0..1, how hard the runner works: a jog at 0, a sprint at 1. Fixed per tier. */
   effort: number;
-  /** 0..1, how far the hands and feet reach on each move. */
-  reach: number;
-  /** 0..1, how far off the rock the climber is in a lunge. */
-  lunge: number;
+  /** 0..1, how wide the legs and arms swing. */
+  stride: number;
+  /** Height of a leap, in runner heights. */
+  hop: number;
+  /** 0..1, how far into a leap's tucked pose the runner is. */
+  tuck: number;
   /** 0..1, both arms raised in triumph. */
   cheer: number;
-  /** 0..1, losing the holds and dropping a little. */
+  /** 0..1, stumbling and dropping a little. */
   slip: number;
-  /** 0..1, how far the climber pulls ahead of the camera mid-climb. */
+  /** 0..1, how far the runner pulls ahead of the camera mid-climb. */
   lead: number;
   /** 0..1, how visible this climb's tier lines are. */
   lines: number;
@@ -41,32 +40,47 @@ export interface ClimbFx {
   done: boolean;
 }
 
+interface Leap {
+  /** When the leap starts and lands, as shares of the climb's movement. */
+  from: number;
+  to: number;
+  /** Peak height, in runner heights. */
+  height: number;
+}
+
 interface Tier {
   duration: number;
   rush: number;
   flash: number;
-  /** Whole climbing cycles, so the climber ends back in its resting hold. */
-  moves: number;
+  /** Whole stride cycles run on the way, so the runner ends with the feet together. */
+  strides: number;
   effort: number;
-  /** Whether the climb ends in a lunge and a cheer. */
-  lunge: boolean;
+  leaps: Leap[];
 }
 
-// Rarer answers climb higher and with more drama, and the climber works
-// harder: a careful move, steady climbing, a quick climb, a scramble, then a
-// scramble that ends in a lunge and a cheer.
+// Rarer answers climb higher and with more drama: common and uncommon are a
+// run, rare adds a leap, very rare two bigger ones, and legendary ends in a
+// giant leap over the last lines and a cheer.
 const TIERS: Record<Rarity, Tier> = {
-  1: { duration: 2.0, rush: 0, flash: 0, moves: 2, effort: 0, lunge: false },
-  2: { duration: 2.4, rush: 0.2, flash: 0, moves: 3, effort: 0.25, lunge: false },
-  3: { duration: 2.8, rush: 0.45, flash: 0.35, moves: 4, effort: 0.5, lunge: false },
-  4: { duration: 3.2, rush: 0.7, flash: 0.6, moves: 6, effort: 0.75, lunge: false },
-  5: { duration: 3.8, rush: 1, flash: 1, moves: 6, effort: 1, lunge: true },
+  1: { duration: 2.0, rush: 0, flash: 0, strides: 2, effort: 0, leaps: [] },
+  2: { duration: 2.4, rush: 0.2, flash: 0, strides: 3, effort: 0.25, leaps: [] },
+  3: { duration: 2.8, rush: 0.45, flash: 0.35, strides: 3, effort: 0.5, leaps: [{ from: 0.4, to: 0.72, height: 0.55 }] },
+  4: {
+    duration: 3.2,
+    rush: 0.7,
+    flash: 0.6,
+    strides: 3,
+    effort: 0.75,
+    leaps: [
+      { from: 0.25, to: 0.5, height: 0.55 },
+      { from: 0.6, to: 0.92, height: 0.8 },
+    ],
+  },
+  5: { duration: 3.8, rush: 1, flash: 1, strides: 4, effort: 1, leaps: [{ from: 0.45, to: 1, height: 1.3 }] },
 };
 
 /** Share of a climb spent moving; the rest lets the reached line glow before it fades. */
 const ARRIVE = 0.82;
-/** Share of a lunging climb's movement spent scrambling before the lunge. */
-const SCRAMBLE_TIME = 0.75;
 
 const STUMBLE_DURATION = 0.7;
 const STEP_RATE = 2.2;
@@ -94,7 +108,7 @@ export function climbFx(rarity: Rarity | null, elapsed: number): ClimbFx {
       shake: 0.006 * Math.sin(elapsed * 38) * decay,
       rush: 0,
       flash: 0,
-      ...HOLDING,
+      ...STANDING,
       slip: Math.sin(Math.PI * Math.min(1, u * 1.6)) ** 2,
       done,
     };
@@ -106,7 +120,7 @@ export function climbFx(rarity: Rarity | null, elapsed: number): ClimbFx {
   const swell = 6.75 * m * (1 - m) ** 2;
   // Each step lifts and lowers the camera with no hard bounce at the bottom.
   const step = Math.sin(elapsed * STEP_RATE * Math.PI) ** 2;
-  const motion = climberMotion(tier, m);
+  const motion = runnerMotion(tier, m);
   return {
     travel: climbEase(m),
     bob: -STEP_HEIGHT * step * swell,
@@ -115,7 +129,7 @@ export function climbFx(rarity: Rarity | null, elapsed: number): ClimbFx {
     // The glow builds toward arrival, then fades out.
     flash: tier.flash * Math.sin(Math.PI * u ** 1.6),
     ...motion,
-    // A cheer winds down with the glow so the climber settles back into its hold.
+    // A cheer winds down with the glow so the runner settles back to standing.
     cheer: motion.cheer * (1 - smoothstep(0.94, 1, u)),
     lines: smoothstep(0, 0.08, u) * (1 - smoothstep(0.9, 1, u)),
     lit: smoothstep(ARRIVE - 0.05, ARRIVE, u),
@@ -125,12 +139,13 @@ export function climbFx(rarity: Rarity | null, elapsed: number): ClimbFx {
   };
 }
 
-/** The climber at rest, holding on to the face. */
-export const HOLDING = {
+/** The runner at rest, standing. */
+export const STANDING = {
   phase: 0,
   effort: 0,
-  reach: 0,
-  lunge: 0,
+  stride: 0,
+  hop: 0,
+  tuck: 0,
   cheer: 0,
   slip: 0,
   lead: 0,
@@ -139,30 +154,34 @@ export const HOLDING = {
   chip: 0,
 } as const;
 
-/** The climber's motion while it moves, `m` running 0..1 to arrival. */
-function climberMotion(tier: Tier, m: number) {
-  if (!tier.lunge) {
-    return {
-      ...HOLDING,
-      phase: tier.moves * easeInOut(m),
-      effort: tier.effort,
-      // The reach opens as the climber sets off and closes on arrival.
-      reach: Math.sin(Math.PI * m) ** 0.5,
-      lead: Math.sin(Math.PI * m) ** 1.5,
-    };
+/** The runner's motion while it moves, `m` running 0..1 to arrival. */
+function runnerMotion(tier: Tier, m: number) {
+  // Legs cycle only while running; in the air they hold the leap's pose.
+  let air = 0;
+  let hop = 0;
+  let airborne = 0;
+  for (const leap of tier.leaps) {
+    const t = Math.min(1, Math.max(0, (m - leap.from) / (leap.to - leap.from)));
+    airborne += Math.min(m, leap.to) > leap.from ? Math.min(m, leap.to) - leap.from : 0;
+    if (t > 0 && t < 1) {
+      air = Math.sin(Math.PI * t);
+      hop = leap.height * air;
+    }
   }
-  const scramble = Math.min(1, m / SCRAMBLE_TIME);
-  const air = Math.min(1, Math.max(0, (m - SCRAMBLE_TIME) / (1 - SCRAMBLE_TIME)));
+  const airTime = tier.leaps.reduce((sum, leap) => sum + leap.to - leap.from, 0);
+  const run = Math.min(1, Math.max(0, (m - airborne) / (1 - airTime)));
   return {
-    ...HOLDING,
-    // The scramble builds speed into the lunge instead of slowing to a stop.
-    phase: tier.moves * (scramble - Math.sin(Math.PI * scramble) / Math.PI),
+    ...STANDING,
+    // A plain run eases in and out; a run between leaps keeps its pace into them.
+    phase: tier.strides * (tier.leaps.length ? run : easeInOut(run)),
     effort: tier.effort,
-    reach: Math.sin((Math.PI / 2) * Math.min(1, scramble * 4)) * (1 - air),
-    lunge: Math.sin(Math.PI * air),
-    lead: Math.sin(Math.PI * m),
-    // Arms go up as the climber lands and stay up while the line glows.
-    cheer: smoothstep(0.9, 1, m),
+    // The swing opens as the runner sets off and closes on arrival.
+    stride: Math.sin(Math.PI * run) ** 0.5 * (1 - air),
+    hop,
+    tuck: air,
+    lead: Math.sin(Math.PI * m) ** 1.5,
+    // Legendary lands its giant leap with both arms up.
+    cheer: tier.effort === 1 ? smoothstep(0.9, 1, m) : 0,
   };
 }
 
