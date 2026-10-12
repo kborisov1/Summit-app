@@ -81,7 +81,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, view: SceneView): void 
   drawBirds(ctx, view, smoothstep(0.1, 0.2, p) * (1 - smoothstep(0.38, 0.48, p)));
 
   // Haze fades as the climber rises above it.
-  const haze = (0.4 - 0.28 * p) * (1 + 0.08 * Math.sin(view.time * 0.35));
+  const haze = (0.4 - 0.28 * p) * (1 + 0.08 * drift(3, view.time * 0.12));
   LAYERS.forEach((layer, i) => {
     drawRidge(ctx, view, layer, i, p, horizon, haze * (1 - i / LAYERS.length));
     // Clouds sit between the far and middle ranges, and sink below as you climb.
@@ -111,7 +111,7 @@ function drawSky(ctx: CanvasRenderingContext2D, { width, height }: SceneView, p:
 function drawStars(ctx: CanvasRenderingContext2D, { width, height, time }: SceneView, strength: number) {
   if (strength <= 0) return;
   for (let i = 0; i < STAR_COUNT; i++) {
-    const twinkle = 0.6 + 0.4 * Math.sin(time * (0.8 + hash(i * 3.3) * 1.6) + i);
+    const twinkle = 0.6 + 0.4 * drift(i * 3.3, time * (0.4 + hash(i * 3.3) * 0.8));
     ctx.fillStyle = rgba(WHITE, strength * twinkle * (0.35 + hash(i * 8.1) * 0.6));
     const r = 0.5 + hash(i * 2.2) * 1.1;
     ctx.beginPath();
@@ -128,7 +128,7 @@ function drawSun(ctx: CanvasRenderingContext2D, { width, height, time }: SceneVi
   const y = height * (0.5 - 0.1 * smoothstep(0.94, 1, p));
   const r = Math.max(width, height) * 0.45;
   const glow = ctx.createRadialGradient(x, y, 0, x, y, r);
-  glow.addColorStop(0, rgba(GOLD, (0.6 + 0.06 * Math.sin(time * 0.6)) * strength));
+  glow.addColorStop(0, rgba(GOLD, (0.6 + 0.06 * drift(5, time * 0.2)) * strength));
   glow.addColorStop(1, rgba(GOLD, 0));
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, width, height);
@@ -147,12 +147,15 @@ function drawBirds(ctx: CanvasRenderingContext2D, { width, height, time }: Scene
   ctx.lineWidth = 1.4;
   ctx.lineCap = 'round';
   for (let i = 0; i < BIRD_COUNT; i++) {
-    // Each bird circles a slow, slightly tilted loop.
+    // Each bird circles a slow, slightly tilted loop that wanders a little.
     const a = time * (0.12 + hash(i * 4.4) * 0.08) + i * 1.9;
-    const x = width * (0.24 + 0.06 * i) + Math.cos(a) * width * 0.09;
-    const y = height * (0.22 + 0.03 * i) + Math.sin(a) * height * 0.035;
+    const loose = 1 + 0.25 * drift(i * 6.1, time * 0.07);
+    const x = width * (0.24 + 0.06 * i) + Math.cos(a) * width * 0.09 * loose;
+    const y = height * (0.22 + 0.03 * i) + Math.sin(a) * height * 0.035 * loose;
     const span = Math.min(width, height) * (0.012 + hash(i * 7.3) * 0.006);
-    const flap = Math.sin(time * 5 + i * 2.1) * span * 0.45;
+    // Birds flap in bursts and glide in between, each on its own rhythm.
+    const flapping = 0.15 + 0.85 * smoothstep(-0.2, 0.3, drift(i * 9.7, time * 0.3));
+    const flap = Math.sin(time * (4.4 + hash(i * 1.4) * 1.4) + i * 2.1) * span * 0.45 * flapping;
     ctx.beginPath();
     ctx.moveTo(x - span, y - flap);
     ctx.quadraticCurveTo(x - span * 0.4, y - span * 0.15, x, y);
@@ -231,9 +234,13 @@ function drawTrees(
     if (fade <= 0) continue;
     ctx.globalAlpha = prev * fade;
     const u = (k + hash(k * 2.3)) / TREE_SLOTS;
-    // Treetops lean in a slow breeze; each tree is a little out of step.
-    // A gust sweeps left to right, so it reaches each tree a moment apart.
-    const sway = Math.sin(time * 0.9 + k * 1.7) * width * 0.0012 + gust(time - u * GUST_CROSSING) * width * 0.003;
+    // Treetops lean in a breeze that rises and falls along the ridge, and
+    // each tree is a little out of step. A gust sweeps left to right, so it
+    // reaches each tree a moment apart.
+    const breeze = 0.6 + 0.4 * drift(depth * 7 + 1, time * 0.15 - u * 0.8);
+    const sway =
+      Math.sin(time * (0.75 + hash(k * 1.1) * 0.35) + k * 1.7) * width * 0.0012 * breeze +
+      gust(time - u * GUST_CROSSING) * width * 0.003;
     const x = u * width + offsetX;
     const h = height * (0.018 + 0.022 * depth) * (0.7 + hash(k * 3.7) * 0.6);
     const y = crest(u) + h * 0.15;
@@ -275,7 +282,7 @@ function drawCloudSea(ctx: CanvasRenderingContext2D, view: SceneView, strength: 
   if (strength <= 0) return;
   const { width, height } = view;
   const wind = view.wind ?? view.time;
-  const top = height * (0.96 - 0.16 * strength) + Math.sin(view.time * 0.3) * height * 0.004;
+  const top = height * (0.96 - 0.16 * strength) + drift(7, view.time * 0.1) * height * 0.004;
 
   const bank = ctx.createLinearGradient(0, top, 0, height);
   bank.addColorStop(0, rgba([248, 240, 236], 0));
@@ -287,7 +294,7 @@ function drawCloudSea(ctx: CanvasRenderingContext2D, view: SceneView, strength: 
   for (let i = 0; i < CLOUD_SEA_COUNT; i++) {
     const span = width * 1.4;
     const x = ((hash(i * 4.9) * span + wind * (3 + hash(i * 1.1) * 4)) % span) - width * 0.2;
-    const y = top + height * (0.02 + hash(i * 6.6) * 0.06) + Math.sin(view.time * 0.4 + i * 1.3) * height * 0.003;
+    const y = top + height * (0.02 + hash(i * 6.6) * 0.06) + drift(i * 1.3, view.time * 0.13) * height * 0.003;
     const rx = width * (0.08 + hash(i * 3.4) * 0.08);
     puff(ctx, x, y, rx, rx * 0.28, 0.7 * strength);
   }
@@ -331,7 +338,7 @@ function drawMist(ctx: CanvasRenderingContext2D, view: SceneView, strength: numb
   for (let i = 0; i < 4; i++) {
     const span = width * 1.5;
     const x = ((hash(i * 6.3) * span + wind * (4 + hash(i * 2.1) * 4)) % span) - width * 0.25 + gust(time - 0.3) * width * 0.012;
-    const y = height * (0.74 + hash(i * 3.9) * 0.18) + Math.sin(time * 0.25 + i) * height * 0.006;
+    const y = height * (0.74 + hash(i * 3.9) * 0.18) + drift(i * 3.9, time * 0.08) * height * 0.006;
     const rx = width * (0.16 + hash(i * 8.7) * 0.1);
     puff(ctx, x, y, rx, rx * 0.16, 0.3 * strength);
   }
@@ -344,7 +351,8 @@ function drawMist(ctx: CanvasRenderingContext2D, view: SceneView, strength: numb
 
 function drawStormShade(ctx: CanvasRenderingContext2D, width: number, height: number, time: number, storm: number) {
   if (storm <= 0) return;
-  ctx.fillStyle = rgba([170, 178, 194], (0.18 + 0.04 * Math.sin(time * 0.5)) * storm);
+  // The storm thickens and thins in uneven surges.
+  ctx.fillStyle = rgba([170, 178, 194], (0.18 + 0.05 * drift(13, time * 0.18)) * storm);
   ctx.fillRect(0, 0, width, height);
 }
 
@@ -354,13 +362,13 @@ function drawSnow(ctx: CanvasRenderingContext2D, view: SceneView, intensity: num
   const wind = view.wind ?? time;
   const count = Math.round(SNOW_COUNT * intensity);
   // Wind picks up with the storm, slanting the snowfall.
-  const drift = 12 + 70 * intensity;
+  const slant = 12 + 70 * intensity;
   ctx.fillStyle = rgba([255, 255, 255], 0.75);
   ctx.beginPath();
   for (let i = 0; i < count; i++) {
     const fall = 20 + hash(i * 1.7) * 40;
     const y = (hash(i * 9.1) * height + time * fall) % height;
-    const x = (((hash(i * 4.3) * width + Math.sin(time * 0.6 + i) * 18 + wind * drift) % width) + width) % width;
+    const x = (((hash(i * 4.3) * width + Math.sin(time * 0.6 + i) * 18 + wind * slant) % width) + width) % width;
     const r = 0.8 + hash(i * 6.7) * 1.6;
     ctx.moveTo(x + r, y);
     ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -405,7 +413,7 @@ function drawDawn(ctx: CanvasRenderingContext2D, { width, height, time }: SceneV
   const y = height * 0.5;
   const r = Math.max(width, height) * 0.62;
   const glow = ctx.createRadialGradient(x, y, 0, x, y, r);
-  const pulse = 0.94 + 0.06 * Math.sin(time * 0.5);
+  const pulse = 0.94 + 0.06 * drift(17, time * 0.16);
   glow.addColorStop(0, rgba([255, 226, 170], 0.85 * strength * pulse));
   glow.addColorStop(0.35, rgba([255, 200, 150], 0.35 * strength));
   glow.addColorStop(1, rgba([255, 200, 150], 0));
@@ -418,9 +426,9 @@ const MOTE_COUNT = 40;
 /** Seeds and pollen drifting in the breeze; each gust shoves them along. */
 function drawMotes(ctx: CanvasRenderingContext2D, { width, height, time }: SceneView, strength: number) {
   if (strength <= 0) return;
-  const cycle = Math.floor(time / 10);
-  const since = time - cycle * 10 - gustStart(cycle);
-  const push = (cycle + smoothstep(0, GUST_CROSSING + 1, since)) * width * 0.35;
+  const slot = Math.floor(time / GUST_SLOT);
+  const since = time - gustAt(slot).start;
+  const push = (slot + smoothstep(0, GUST_CROSSING + 1, since)) * width * 0.35;
   ctx.fillStyle = rgba([255, 222, 150], 0.85 * strength);
   ctx.beginPath();
   for (let i = 0; i < MOTE_COUNT; i++) {
@@ -441,12 +449,17 @@ const GUST_WISPS = 14;
 /** Pale wisps of air that sweep across the sky with each gust. */
 function drawGustStreaks(ctx: CanvasRenderingContext2D, { width, height, time }: SceneView, strength: number) {
   if (strength <= 0) return;
-  const cycle = Math.floor(time / 10);
-  const since = time - cycle * 10 - gustStart(cycle);
+  // A late gust can still be crossing when the next slot begins.
+  const slot = Math.floor(time / GUST_SLOT);
+  const cycle = time - gustAt(slot).start >= 0 ? slot : slot - 1;
+  const { start, strength: force } = gustAt(cycle);
+  const since = time - start;
   if (since < 0 || since > GUST_CROSSING + 1) return;
   ctx.lineCap = 'round';
   ctx.lineWidth = Math.max(1, height * 0.003);
-  for (let i = 0; i < GUST_WISPS; i++) {
+  // Weaker gusts carry fewer, fainter wisps.
+  const wisps = Math.round(GUST_WISPS * (0.5 + 0.5 * force));
+  for (let i = 0; i < wisps; i++) {
     // Each wisp trails a little behind the front, at its own height.
     const head = (since - hash(cycle * 7.1 + i * 3.7) * 0.6) / GUST_CROSSING;
     const length = width * (0.2 + hash(i * 5.3) * 0.2);
@@ -459,7 +472,7 @@ function drawGustStreaks(ctx: CanvasRenderingContext2D, { width, height, time }:
     const curl = height * (0.008 + hash(i * 8.3) * 0.012);
     const line = ctx.createLinearGradient(x - length, 0, x, 0);
     line.addColorStop(0, rgba(WHITE, 0));
-    line.addColorStop(0.75, rgba(WHITE, 0.75 * strength * fade));
+    line.addColorStop(0.75, rgba(WHITE, 0.75 * strength * force * fade));
     line.addColorStop(1, rgba(WHITE, 0));
     ctx.strokeStyle = line;
     ctx.beginPath();
@@ -469,16 +482,51 @@ function drawGustStreaks(ctx: CanvasRenderingContext2D, { width, height, time }:
   }
 }
 
-function gustStart(cycle: number): number {
-  return 1 + hash(cycle * 2.9) * 5;
+/** Gusts come one per slot of this many seconds, at an uneven point within it. */
+const GUST_SLOT = 10;
+
+interface Gust {
+  start: number;
+  length: number;
+  /** 0..1 */
+  strength: number;
+  /** A weaker puff that sometimes trails the gust, or null. */
+  echo: { start: number; length: number; strength: number } | null;
 }
 
-/** A brief puff of wind, 0..1: about 1.4 s long, every 10 s. */
+/** The gust in a slot: its timing, length, and strength vary from one to the next. */
+function gustAt(slot: number): Gust {
+  const start = slot * GUST_SLOT + 1.5 + hash(slot * 2.9) * 5;
+  const length = 1.1 + hash(slot * 4.7) * 0.7;
+  const strength = 0.6 + hash(slot * 8.3) * 0.4;
+  const echo =
+    hash(slot * 6.1) < 0.35
+      ? { start: start + length + 0.4 + hash(slot * 3.3) * 1.2, length: 0.9, strength: strength * 0.45 }
+      : null;
+  return { start, length, strength, echo };
+}
+
+/** Wind strength from gusts at a moment, 0..1: roughly one every ten seconds. */
 function gust(time: number): number {
-  const cycle = Math.floor(time / 10);
-  const t = time - cycle * 10 - gustStart(cycle);
-  if (t < 0 || t > 1.4) return 0;
-  return Math.sin((t / 1.4) * Math.PI) ** 2;
+  const slot = Math.floor(time / GUST_SLOT);
+  let sum = 0;
+  // A gust late in the previous slot, or its echo, can spill into this one.
+  for (const g of [gustAt(slot - 1), gustAt(slot)]) {
+    sum += puffOfWind(time, g);
+    if (g.echo) sum += puffOfWind(time, g.echo);
+  }
+  return Math.min(1, sum);
+}
+
+function puffOfWind(time: number, g: { start: number; length: number; strength: number }): number {
+  const t = time - g.start;
+  if (t < 0 || t > g.length) return 0;
+  return g.strength * Math.sin((t / g.length) * Math.PI) ** 2;
+}
+
+/** Smooth, aperiodic wobble in -1..1, so ambient motion never settles into a beat. */
+function drift(seed: number, t: number): number {
+  return (valueNoise(seed + 401, t) + 0.5 * valueNoise(seed + 809, t * 2.3)) / 0.75 - 1;
 }
 
 // Ridgelines never change, so their noise is sampled once per layer and
