@@ -58,7 +58,7 @@ Each prompt can record known wrong answers so that near misses that are clearly 
 
 The background is a single full-screen canvas behind the UI. It draws layered mountains, drifting clouds, and weather that changes with the altitude gained. Rendering uses canvas gradients and procedural noise, with no image assets.
 
-`scene.ts` draws one frame from the progress and the camera effects. `climb.ts` turns each answer's rarity into a timed camera move (travel, footstep sway, stumble shake, updraft, glow). Both are pure and have no React imports. With reduced motion, the scene jumps straight to the new altitude and skips the camera effects.
+`scene.ts` draws one frame from the progress and the camera effects. `climb.ts` turns each answer's rarity into a timed camera move (travel, footstep sway, stumble shake, updraft, glow). Both are pure and have no React imports. Ambient motion (tree sway, mist, haze, cloud swell) derives from `time` inside `scene.ts`. With reduced motion, `time` stops, so the scene is still and jumps straight to the new altitude and skips the camera effects.
 
 The animation loop runs in a `useEffect` and reads progress from a ref, so the React render cycle is not tied to frame updates. The loop pauses when the tab is hidden and respects `prefers-reduced-motion`.
 

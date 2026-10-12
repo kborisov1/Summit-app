@@ -63,6 +63,7 @@ Design rules:
 - An interactive background with layered mountains, drifting clouds, and weather that reacts to the player's progress.
   - The scenery passes through four zones as altitude rises: forest foothills with valley mist, alpine rock with circling birds, a glacier snowstorm, and a clear death zone with stars and a sea of clouds below, ending in a sunrise at the summit.
   - Weather depends only on altitude.
+  - Every zone keeps a slight ambient motion at all times (swaying pines and rolling mist in the foothills, breathing haze in the alpine, a pulsing storm, a swelling cloud sea and a softly pulsing sunrise), subtle enough to be felt rather than noticed.
   - Each answer plays a camera climb with no visible climber. Rarer answers climb longer and more dramatically: common answers take a gentle step, rare and above add an updraft, and very rare and legendary answers end in a golden glow. A timeout plays a small stumble with no climb; a wrong answer plays nothing, since the player stays on the same prompt.
 - A simple, readable altitude meter as the main HUD element.
 - No sound. The game is meant to feel calm and visual.
