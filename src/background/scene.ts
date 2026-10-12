@@ -78,7 +78,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, view: SceneView): void 
   drawBirds(ctx, view, smoothstep(0.1, 0.2, p) * (1 - smoothstep(0.38, 0.48, p)));
 
   // Haze fades as the climber rises above it.
-  const haze = 0.4 - 0.28 * p;
+  const haze = (0.4 - 0.28 * p) * (1 + 0.08 * Math.sin(view.time * 0.35));
   LAYERS.forEach((layer, i) => {
     drawRidge(ctx, view, layer, i, p, horizon, haze * (1 - i / LAYERS.length));
     // Clouds sit between the far and middle ranges, and sink below as you climb.
@@ -86,8 +86,8 @@ export function drawScene(ctx: CanvasRenderingContext2D, view: SceneView): void 
   });
 
   drawCloudSea(ctx, view, smoothstep(0.66, 0.86, p));
-  drawMist(ctx, width, height, 1 - smoothstep(0, 0.3, p));
-  drawStormShade(ctx, width, height, storm);
+  drawMist(ctx, view, 1 - smoothstep(0, 0.3, p));
+  drawStormShade(ctx, width, height, view.time, storm);
   drawSnow(ctx, view, storm);
   drawStreaks(ctx, view, view.rush ?? 0);
   drawFlash(ctx, view, view.flash ?? 0);
@@ -114,7 +114,7 @@ function drawStars(ctx: CanvasRenderingContext2D, { width, height, time }: Scene
   }
 }
 
-function drawSun(ctx: CanvasRenderingContext2D, { width, height }: SceneView, p: number) {
+function drawSun(ctx: CanvasRenderingContext2D, { width, height, time }: SceneView, p: number) {
   const strength = smoothstep(0.82, 1, p);
   if (strength <= 0) return;
   const x = width * 0.72;
@@ -122,7 +122,7 @@ function drawSun(ctx: CanvasRenderingContext2D, { width, height }: SceneView, p:
   const y = height * (0.5 - 0.1 * smoothstep(0.94, 1, p));
   const r = Math.max(width, height) * 0.45;
   const glow = ctx.createRadialGradient(x, y, 0, x, y, r);
-  glow.addColorStop(0, rgba(GOLD, 0.6 * strength));
+  glow.addColorStop(0, rgba(GOLD, (0.6 + 0.06 * Math.sin(time * 0.6)) * strength));
   glow.addColorStop(1, rgba(GOLD, 0));
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, width, height);
@@ -208,7 +208,7 @@ function drawRidge(
 
 function drawTrees(
   ctx: CanvasRenderingContext2D,
-  { width, height }: SceneView,
+  { width, height, time }: SceneView,
   crest: (u: number) => number,
   offsetX: number,
   color: Rgb,
@@ -220,6 +220,8 @@ function drawTrees(
   for (let k = 0; k < TREE_SLOTS; k++) {
     if (hash(k * 5.9 + depth * 17) > density * 0.75) continue;
     const u = (k + hash(k * 2.3)) / TREE_SLOTS;
+    // Treetops lean in a slow breeze; each tree is a little out of step.
+    const sway = Math.sin(time * 0.9 + k * 1.7) * width * 0.0012;
     const x = u * width + offsetX;
     const h = height * (0.018 + 0.022 * depth) * (0.7 + hash(k * 3.7) * 0.6);
     const y = crest(u) + h * 0.15;
@@ -229,8 +231,9 @@ function drawTrees(
     for (let t = 0; t < 3; t++) {
       const ty = y - h * (t / 3);
       const tw = w * (1 - t * 0.25);
+      const lean = sway * ((t + 1) / 3);
       ctx.moveTo(x - tw, ty);
-      ctx.lineTo(x, ty - h * 0.5);
+      ctx.lineTo(x + lean, ty - h * 0.5);
       ctx.lineTo(x + tw, ty);
     }
     ctx.fill();
@@ -259,7 +262,7 @@ function drawCloudSea(ctx: CanvasRenderingContext2D, view: SceneView, strength: 
   if (strength <= 0) return;
   const { width, height } = view;
   const wind = view.wind ?? view.time;
-  const top = height * (0.96 - 0.16 * strength);
+  const top = height * (0.96 - 0.16 * strength) + Math.sin(view.time * 0.3) * height * 0.004;
 
   const bank = ctx.createLinearGradient(0, top, 0, height);
   bank.addColorStop(0, rgba([248, 240, 236], 0));
@@ -271,7 +274,7 @@ function drawCloudSea(ctx: CanvasRenderingContext2D, view: SceneView, strength: 
   for (let i = 0; i < CLOUD_SEA_COUNT; i++) {
     const span = width * 1.4;
     const x = ((hash(i * 4.9) * span + wind * (3 + hash(i * 1.1) * 4)) % span) - width * 0.2;
-    const y = top + height * (0.02 + hash(i * 6.6) * 0.06);
+    const y = top + height * (0.02 + hash(i * 6.6) * 0.06) + Math.sin(view.time * 0.4 + i * 1.3) * height * 0.003;
     const rx = width * (0.08 + hash(i * 3.4) * 0.08);
     puff(ctx, x, y, rx, rx * 0.28, 0.7 * strength);
   }
@@ -289,8 +292,18 @@ function puff(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, r
   ctx.restore();
 }
 
-function drawMist(ctx: CanvasRenderingContext2D, width: number, height: number, strength: number) {
+function drawMist(ctx: CanvasRenderingContext2D, view: SceneView, strength: number) {
   if (strength <= 0) return;
+  const { width, height, time } = view;
+  const wind = view.wind ?? time;
+  // Slow wisps roll through the valley.
+  for (let i = 0; i < 4; i++) {
+    const span = width * 1.5;
+    const x = ((hash(i * 6.3) * span + wind * (4 + hash(i * 2.1) * 4)) % span) - width * 0.25;
+    const y = height * (0.74 + hash(i * 3.9) * 0.18) + Math.sin(time * 0.25 + i) * height * 0.006;
+    const rx = width * (0.16 + hash(i * 8.7) * 0.1);
+    puff(ctx, x, y, rx, rx * 0.16, 0.3 * strength);
+  }
   const mist = ctx.createLinearGradient(0, height * 0.5, 0, height);
   mist.addColorStop(0, rgba([236, 230, 222], 0));
   mist.addColorStop(1, rgba([236, 230, 222], 0.55 * strength));
@@ -298,9 +311,9 @@ function drawMist(ctx: CanvasRenderingContext2D, width: number, height: number, 
   ctx.fillRect(0, 0, width, height);
 }
 
-function drawStormShade(ctx: CanvasRenderingContext2D, width: number, height: number, storm: number) {
+function drawStormShade(ctx: CanvasRenderingContext2D, width: number, height: number, time: number, storm: number) {
   if (storm <= 0) return;
-  ctx.fillStyle = rgba([170, 178, 194], 0.18 * storm);
+  ctx.fillStyle = rgba([170, 178, 194], (0.18 + 0.04 * Math.sin(time * 0.5)) * storm);
   ctx.fillRect(0, 0, width, height);
 }
 
