@@ -18,6 +18,7 @@ import { AltitudeMeter } from './AltitudeMeter';
 import { Feedback } from './Feedback';
 import { PromptCard } from './PromptCard';
 import { ResultScreen } from './ResultScreen';
+import { StartScreen } from './StartScreen';
 
 interface Props {
   sets?: readonly PromptSet[];
@@ -38,6 +39,7 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
   const todayKey = toDayKey(now);
   const [set] = useState(() => selectSet(sets, dayNumber(now)));
   const [saved] = useState(() => loadProgress(store));
+  const [started, setStarted] = useState(false);
   const [run, dispatch] = useReducer(runReducer, set, createRun);
 
   // A finished run is folded into progress; an earlier result for today wins.
@@ -66,6 +68,8 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
         <main className="stage">
           {today ? (
             <ResultScreen result={today} prompts={set.prompts} streak={currentStreak(progress, todayKey)} />
+          ) : !started ? (
+            <StartScreen onStart={() => setStarted(true)} />
           ) : prompt ? (
             <>
               <div className="feedback-slot" aria-live="polite">

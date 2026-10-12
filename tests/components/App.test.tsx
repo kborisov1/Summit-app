@@ -31,8 +31,9 @@ function memoryStore(initial: Record<string, string> = {}): KeyValueStore & { da
   };
 }
 
-function renderApp(store = memoryStore()) {
+function renderApp(store = memoryStore(), skipStart = false) {
   render(<App sets={[set]} now={now} store={store} />);
+  if (!skipStart) fireEvent.click(screen.getByRole('button', { name: 'Start' }));
   return store;
 }
 
@@ -93,7 +94,7 @@ describe('App run flow', () => {
     for (let i = 0; i < 7; i++) answer('Common');
     cleanup();
 
-    renderApp(memoryStore({ [STORAGE_KEY]: first.data[STORAGE_KEY] }));
+    renderApp(memoryStore({ [STORAGE_KEY]: first.data[STORAGE_KEY] }), true);
     expect(screen.getByRole('heading', { name: 'You climbed to 910 m' })).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
