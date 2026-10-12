@@ -1,6 +1,6 @@
 /**
  * How the runner moves across its lane (scope "Experience"): it strolls about
- * between answers, runs across during a climb, faces where it heads, and
+ * between answers, drifts a little sideways during a climb, faces where it heads, and
  * tilts into its motion. Pure, and stepped once per frame by `Background`.
  */
 
@@ -38,10 +38,10 @@ export interface RoamInput {
 }
 
 // Speeds in runner heights per second: a stroll between answers, a run across during a climb.
-const STROLL_SPEED = 1.5;
-const CLIMB_SPEED = 3.6;
+const STROLL_SPEED = 1.1;
+const CLIMB_SPEED = 2.4;
 /** Seconds between the runner's decisions to stroll somewhere new. */
-const STROLL_SLOT = 7;
+const STROLL_SLOT = 8;
 /** How quickly the runner turns round, in facings per second. */
 const TURN_RATE = 7;
 /** Most the runner tilts into its motion, in radians. */
@@ -51,11 +51,11 @@ const MAX_PITCH = 0.22;
 
 /** Where the runner is heading across its lane. */
 export function roamGoal(roam: Roam, input: RoamInput): number {
-  const { climb, range, time } = input;
+  const { climb, range, size, time } = input;
   if (climb) {
-    // Each climb runs to a spot across the lane from where it started.
+    // Each climb drifts a short way toward the roomier side, so the run stays mostly upward.
     const side = climb.startX >= 0 ? -1 : 1;
-    return side * range * (0.45 + 0.55 * hash(climb.id * 7.3));
+    return clamp(climb.startX + side * size * (1 + 1.5 * hash(climb.id * 7.3)), -range, range);
   }
   if (input.typing) return roam.x;
   // Every few seconds it picks somewhere to stroll to, or stays put.
