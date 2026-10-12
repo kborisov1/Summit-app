@@ -1,4 +1,4 @@
-import { useEffect, useId, useState, type FormEvent, type ReactNode, type Ref } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode, type Ref } from 'react';
 import { PROMPT_TIME_LIMIT_MS } from '../game/run';
 import type { Prompt } from '../game/types';
 import { TimerRing } from './TimerRing';
@@ -35,10 +35,17 @@ export function PromptCard({
   onLowTimeChange,
 }: Props) {
   const [input, setInput] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
   const questionId = useId();
   const remaining = useCountdown(PROMPT_TIME_LIMIT_MS, onTimeout);
   const low = remaining <= LOW_TIME_MS;
   const typing = input.trim() !== '';
+
+  // Desktop starts typing right away. On a touch screen the keyboard would
+  // cover the question and climber, so the player taps the field instead.
+  useEffect(() => {
+    if (window.matchMedia?.('(pointer: fine)').matches) inputRef.current?.focus();
+  }, []);
 
   useEffect(() => {
     onTypingChange?.(typing);
@@ -79,12 +86,17 @@ export function PromptCard({
         <TimerRing remaining={remaining} total={PROMPT_TIME_LIMIT_MS} low={low} />
         <input
           className="prompt__input"
+          ref={inputRef}
+          name="answer"
+          type="text"
           aria-labelledby={questionId}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Your answer"
-          autoFocus
           autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
+          data-form-type="other"
           autoCorrect="off"
           autoCapitalize="off"
           spellCheck={false}

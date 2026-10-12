@@ -20,6 +20,7 @@ import { Landing } from './Landing';
 import { PromptCard } from './PromptCard';
 import { ResultScreen } from './ResultScreen';
 import { StartScreen } from './StartScreen';
+import { useKeyboardInset } from './useKeyboardInset';
 
 interface Props {
   sets?: readonly PromptSet[];
@@ -37,6 +38,7 @@ function toDayResult(run: RunState): DayResult {
 }
 
 export function App({ sets = bundledSets, now = new Date(), store = browserStore() }: Props) {
+  useKeyboardInset();
   const todayKey = toDayKey(now);
   const [set] = useState(() => selectSet(sets, dayNumber(now)));
   const [saved] = useState(() => loadProgress(store));
