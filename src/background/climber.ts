@@ -3,9 +3,10 @@
  * facing whichever way it is heading, its body tilted into its motion. There
  * is no ground: it runs up through the scenery
  * on puffs of mist, leaps on rarer answers, and stands on a soft cushion of
- * mist between them. Between answers it stays alive: it breathes, fidgets now
- * and then (crouching down now and again), looks up while the player types, grows restless as time runs low,
- * and shakes its head at a miss.
+ * mist between them. Between answers it stays alive: it breathes, shifts its
+ * weight, fidgets now and then with a gesture picked so it rarely repeats, bends
+ * over, hands on thighs, to watch the answer bar while the player types and nods along with each
+ * keystroke, grows restless as time runs low, and shakes its head at a miss.
  */
 import type { ClimbFx } from './climb';
 
@@ -32,15 +33,17 @@ export interface ClimberView {
 }
 
 export interface ClimberMood {
-  /** 0..1, looking up the mountain while the player types. */
+  /** 0..1, watching the answer bar while the player types. */
   look: number;
   /** 0..1, restless as the prompt's time runs low. */
   tension: number;
   /** Seconds since the last wrong answer, for a head shake. */
   sinceMiss: number;
+  /** Seconds since the last keystroke, for a nod. */
+  sinceKey: number;
 }
 
-export const CALM: ClimberMood = { look: 0, tension: 0, sinceMiss: Infinity };
+export const CALM: ClimberMood = { look: 0, tension: 0, sinceMiss: Infinity, sinceKey: Infinity };
 
 // Body proportions, in runner heights, measured up from the feet.
 const THIGH = 0.25;
@@ -58,8 +61,19 @@ const BEANIE: Rgb = [72, 98, 140];
 const SKIN: Rgb = [206, 164, 134];
 
 const HEAD_SHAKE_TIME = 0.7;
-const FIDGET_TIME = 1.4;
-const FIDGETS = ['stretch', 'shake', 'glance', 'bounce', 'crouch'] as const;
+/** Each gesture and how long it takes, in seconds. */
+const FIDGET_TIMES = {
+  stretch: 1.4,
+  shake: 1.2,
+  glance: 1.6,
+  bounce: 1.2,
+  crouch: 1.6,
+  gaze: 2.6,
+  straps: 1.5,
+  scratch: 1.4,
+  hips: 2.4,
+} as const;
+const FIDGETS = Object.keys(FIDGET_TIMES) as (keyof typeof FIDGET_TIMES)[];
 
 interface Fidget {
   kind: (typeof FIDGETS)[number];
@@ -76,15 +90,26 @@ interface Point {
   y: number;
 }
 
-/** One small gesture every few seconds, at uneven times; more often when tense. */
+/** The gesture for a slot, never the same as the slot before's first pick. */
+function fidgetKind(slot: number): Fidget['kind'] {
+  const n = FIDGETS.length;
+  const pick = (k: number) => Math.floor(hash(k * 5.1) * n);
+  const kind = pick(slot);
+  return FIDGETS[kind === pick(slot - 1) ? (kind + 1 + Math.floor(hash(slot * 1.9) * (n - 1))) % n : kind];
+}
+
+/** One small gesture every few seconds, at uneven times, now and then none; more often when tense. */
 function fidgetAt(time: number, tension: number): Fidget | null {
-  const period = 5 - 2.2 * tension;
+  const period = 4.5 - 2 * tension;
   const slot = Math.floor(time / period);
-  const start = slot * period + hash(slot * 3.7) * period * 0.45;
-  const t = (time - start) / FIDGET_TIME;
+  if (hash(slot * 2.9) < 0.2) return null;
+  const kind = fidgetKind(slot);
+  const duration = Math.min(FIDGET_TIMES[kind], period * 0.9);
+  const start = slot * period + hash(slot * 3.7) * (period - duration);
+  const t = (time - start) / duration;
   if (t < 0 || t > 1) return null;
   return {
-    kind: FIDGETS[Math.floor(hash(slot * 5.1) * FIDGETS.length)],
+    kind,
     side: hash(slot * 8.3) < 0.5 ? 0 : 1,
     amount: smoothstep(0, 0.3, t) * (1 - smoothstep(0.7, 1, t)),
     t,
@@ -109,10 +134,16 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   const breath = standing * (Math.sin(time * 1.7 * pace) + 0.4 * Math.sin(time * 0.63 * pace + 1)) * 0.01 * (1 + tension);
   // Restless weight shifts and a bounce on the toes when time runs low.
   const restless = standing * tension * Math.abs(Math.sin(time * 4.2)) * 0.03;
+  // A slow, uneven shift of weight, so it never stands quite still.
+  const sway = standing * (0.03 * Math.sin(time * 0.41) + 0.02 * Math.sin(time * 0.97 + 2));
+  // Watching the answer bar, it bends over with its hands on its thighs, nodding at each keystroke.
+  const watch = look * standing;
+  const nod = watch * 0.18 * Math.exp(-mood.sinceKey * 7);
+  const gaze = gesture('gaze');
   const bounce = gesture('bounce') * Math.abs(Math.sin((fidget?.t ?? 0) * Math.PI * 3)) * 0.08;
   // Crouching: winding up for a leap, soaking up a landing, or now and then just
   // dropping down on its heels for a moment.
-  const crouch = Math.min(1, pose.crouch + 0.85 * gesture('crouch'));
+  const crouch = Math.min(1, pose.crouch + 0.85 * gesture('crouch') + 0.45 * watch);
 
   // Even a common answer is run with intent; rarer ones are run all out.
   const energy = 0.45 + 0.55 * effort;
@@ -121,7 +152,7 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   const step = Math.abs(Math.sin(cycle(0)));
   // Running uphill, the body drives forward and pumps a little with each step.
   const drive = stride * energy * (0.42 + 0.06 * Math.sin(4 * Math.PI * pose.phase));
-  const lean = 0.08 + drive + 0.25 * tuck + 0.3 * slip + 0.35 * crouch - 0.08 * cheer - 0.06 * look + breath;
+  const lean = 0.08 + drive + 0.25 * tuck + 0.3 * slip + 0.35 * crouch - 0.08 * cheer + 0.12 * watch - 0.06 * gaze + sway + breath;
   const legSwing = stride * (0.5 + 0.35 * energy);
   const armSwing = stride * (0.7 + 0.5 * energy);
   // The torso squashes as a foot strikes and stretches at push-off.
@@ -184,8 +215,14 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
     blendTo(1.35 - i * 0.3, 0.4, slip);
     blendTo(Math.PI - 0.3 - i * 0.25, 0.1, cheer);
     blendTo(Math.PI - 0.15 - i * 0.1, 0.05, gesture('stretch'));
-    // Typing has the runner shading its eyes to look up the mountain.
-    blendTo(2.3, 1.9, i === 0 ? look * standing : 0);
+    // Now and then it shades its eyes to gaze up the mountain.
+    blendTo(2.3, 1.9, i === 0 ? gaze : 0);
+    // Tugging at the pack's straps, scratching under the beanie, hands on hips.
+    blendTo(0.45, 2.4 + 0.2 * Math.sin(time * 14), gesture('straps'));
+    blendTo(2.9, 1.5 + 0.25 * Math.sin(time * 22), i === 0 ? gesture('scratch') : 0);
+    blendTo(-0.9, 1.7, gesture('hips'));
+    // Resting its hands on its thighs to watch the answer bar.
+    blendTo(-0.05 - i * 0.08, 0.35, watch);
     const e = { x: shoulderRel.x + Math.sin(angle) * UPPER_ARM, y: shoulderRel.y - Math.cos(angle) * UPPER_ARM };
     const hand = { x: e.x + Math.sin(angle + elbow) * FOREARM, y: e.y - Math.cos(angle + elbow) * FOREARM };
     return [at(shoulderRel), at(e), at(hand)];
@@ -224,9 +261,9 @@ export function drawClimber(ctx: CanvasRenderingContext2D, view: ClimberView): v
   const shakeHead = miss < 1 ? Math.sin(mood.sinceMiss * 24) * (1 - miss) : 0;
   const facing = Math.max(-1, Math.min(1, 1 - 1.8 * gesture('glance') - 1.2 * Math.abs(shakeHead)));
   // The head nods with each footfall.
-  const tilt = lean * 1.1 - 0.35 * look + 0.12 * stride * (1 - step);
+  const tilt = lean * 1.1 - 0.35 * gaze + 0.25 * watch + nod + 0.12 * stride * (1 - step);
   const head = at({ x: shoulderRel.x + Math.sin(tilt) * NECK, y: shoulderRel.y + Math.cos(tilt) * NECK });
-  drawHead(ctx, head, HEAD * size, facing * Math.sign(face || 1), look, near);
+  drawHead(ctx, head, HEAD * size, facing * Math.sign(face || 1), gaze - watch, near);
 
   stroke(ctx, legPoints(0), near, size * 0.085);
   stroke(ctx, arm(0), near, size * 0.065);
@@ -266,7 +303,10 @@ function drawMist(ctx: CanvasRenderingContext2D, { x, y, size, facing }: Climber
   ctx.globalAlpha = prev;
 }
 
-/** Head side-on in a beanie, the face on whichever side it is turned to. */
+/**
+ * Head side-on in a beanie, the face on whichever side it is turned to, and
+ * raised (`look` 1) or lowered (`look` -1).
+ */
 function drawHead(ctx: CanvasRenderingContext2D, centre: Point, r: number, facing: number, look: number, body: string) {
   ctx.save();
   ctx.fillStyle = body;
@@ -287,7 +327,7 @@ function drawHead(ctx: CanvasRenderingContext2D, centre: Point, r: number, facin
   );
   ctx.fill();
   ctx.fillStyle = rgba(BEANIE, 1);
-  ctx.fillRect(centre.x - r, centre.y - r, r * 2, r * (0.95 - 0.2 * look));
+  ctx.fillRect(centre.x - r, centre.y - r, r * 2, r * (0.95 - 0.2 * Math.max(0, look)));
   ctx.restore();
   ctx.fillStyle = rgba(mix(BEANIE, WHITE, 0.4), 1);
   ctx.beginPath();
