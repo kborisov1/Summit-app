@@ -57,9 +57,11 @@ const FADE_RATE = 3;
 const MOOD_RATE = 4;
 /** How quickly the runner's size and place follow a change in the UI's box, per second. */
 const AREA_RATE = 5;
-/** Seconds the climber waits, shortest and longest, before nodding at a keystroke again. */
-const NOD_GAP_MIN = 3;
-const NOD_GAP_MAX = 8;
+/** Chance that the climber nods at all while the player types one answer. */
+const NOD_CHANCE = 0.3;
+/** Seconds into typing, shortest and longest, before that nod can come. */
+const NOD_DELAY_MIN = 0.6;
+const NOD_DELAY_MAX = 3;
 /** Metres of mountain that fit in one screen height. */
 const METRES_PER_SCREEN = 1150;
 
@@ -109,9 +111,9 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
     let seenMissId = cuesRef.current.missId;
     let missAt = -Infinity;
     let seenKeystrokes = cuesRef.current.keystrokes ?? 0;
-    // The climber nods at the first keystroke, then only now and then as typing goes on.
+    // Now and then the climber nods once at a keystroke while the player types an answer.
     let nodAt = -Infinity;
-    let nextNodAt = -Infinity;
+    let nextNodAt = Infinity;
     let wasTyping = false;
     let roam = ROAM_START;
     let last = performance.now();
@@ -143,11 +145,16 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
         seenMissId = cue.missId;
         if (cue.missId !== null) missAt = time;
       }
+      if (cue.typing && !wasTyping) {
+        // Starting an answer decides whether, and how soon, this one gets a nod.
+        nextNodAt =
+          Math.random() < NOD_CHANCE ? time + NOD_DELAY_MIN + (NOD_DELAY_MAX - NOD_DELAY_MIN) * Math.random() : Infinity;
+      }
       if ((cue.keystrokes ?? 0) !== seenKeystrokes) {
         seenKeystrokes = cue.keystrokes ?? 0;
-        if (!wasTyping || time >= nextNodAt) {
+        if (cue.typing && time >= nextNodAt) {
           nodAt = time;
-          nextNodAt = time + NOD_GAP_MIN + (NOD_GAP_MAX - NOD_GAP_MIN) * Math.random();
+          nextNodAt = Infinity;
         }
       }
       wasTyping = cue.typing;

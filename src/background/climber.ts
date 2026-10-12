@@ -5,8 +5,8 @@
  * on puffs of mist, leaps on rarer answers, and stands on a soft cushion of
  * mist between them. Between answers it stays alive: it breathes, shifts its
  * weight, fidgets now and then with a gesture picked so it rarely repeats, bends
- * over, hands on thighs, to watch the answer bar while the player types (nodding
- * at the first keystroke and now and then after), grows restless as time runs
+ * over, hands on thighs, to watch the answer bar while the player types (now and
+ * then nodding once at a keystroke), grows restless as time runs
  * low, and shakes its head at a miss.
  */
 import type { ClimbFx } from './climb';
