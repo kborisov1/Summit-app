@@ -91,29 +91,16 @@ body {
   gap: 8px;
 }
 
-.meter__readout {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.meter__value {
-  font-family: var(--serif);
-  font-size: 2rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-  text-shadow: 0 1px 12px rgba(255, 255, 255, 0.5);
-}
-
-.meter__summit {
-  font-size: 0.8rem;
-  color: var(--ink-soft);
+.meter__scale {
+  --edge: rgba(43, 50, 69, 0.55);
+  position: relative;
+  height: 52px;
+  margin: 0 18px;
 }
 
 .meter__track {
-  position: relative;
+  position: absolute;
+  inset: 22px 0 auto;
   height: 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.4);
@@ -131,6 +118,73 @@ body {
   transition: transform 1.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.meter__tick {
+  position: absolute;
+  left: calc(var(--at) * 100%);
+  top: 31px;
+  width: 1px;
+  height: 5px;
+  background: var(--edge);
+  opacity: 0.6;
+}
+
+.meter__tick--major {
+  height: 9px;
+  opacity: 1;
+}
+
+.meter__tick-label {
+  position: absolute;
+  top: 12px;
+  left: 0;
+  transform: translateX(-50%);
+  font-size: 0.7rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--ink-soft);
+}
+
+/* The first and last labels stay inside the meter's edges. */
+.meter__tick:first-child .meter__tick-label {
+  transform: none;
+}
+
+.meter__tick:nth-last-child(2) .meter__tick-label {
+  transform: translateX(-100%);
+}
+
+.meter__you {
+  position: absolute;
+  left: calc(var(--fill) * 100%);
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translateX(-50%);
+  transition: left 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.meter__you-label {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #3f4a7a;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.meter__you-dot {
+  width: 12px;
+  height: 12px;
+  margin-top: -1px;
+  border-radius: 50%;
+  background: #fff;
+  border: 3px solid #3f4a7a;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.45);
+}
+
 @media (min-width: 960px) {
   .layout {
     padding: 28px 32px;
@@ -146,25 +200,68 @@ body {
     gap: 14px;
   }
 
-  .meter__readout {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0;
-  }
-
-  .meter__value {
-    font-size: 2.4rem;
+  .meter__scale {
+    width: 96px;
+    height: 74vh;
+    margin: 0;
   }
 
   .meter__track {
+    inset: 0 auto 0 0;
     width: 10px;
-    height: 46vh;
+    height: auto;
   }
 
   .meter__fill {
     background: linear-gradient(0deg, #8a9ab4, #3f4a7a);
     transform-origin: center bottom;
     transform: scaleY(var(--fill));
+  }
+
+  .meter__tick {
+    left: 14px;
+    top: auto;
+    bottom: calc(var(--at) * 100%);
+    width: 5px;
+    height: 1px;
+  }
+
+  .meter__tick--major {
+    width: 9px;
+  }
+
+  .meter__tick-label {
+    top: 0;
+    left: 14px;
+    transform: translateY(-50%);
+  }
+
+  .meter__tick:first-child .meter__tick-label {
+    transform: translateY(-50%);
+  }
+
+  .meter__tick:nth-last-child(2) .meter__tick-label {
+    transform: translateY(-50%);
+  }
+
+  .meter__you {
+    left: 0;
+    top: auto;
+    bottom: calc(var(--fill) * 100%);
+    flex-direction: row-reverse;
+    gap: 6px;
+    transform: translateY(50%);
+    transition: bottom 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .meter__you-dot {
+    margin: 0 0 0 -1px;
+    transform: translateX(-1px);
+  }
+
+  .meter__you-label {
+    position: relative;
+    left: 0;
   }
 }
 
