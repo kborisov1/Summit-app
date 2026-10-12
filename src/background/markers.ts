@@ -91,8 +91,11 @@ function edgeFade({ height }: MarkersView, y: number): number {
   return smoothstep(height * 0.1, height * 0.2, y) * (1 - smoothstep(height * 0.82, height * 0.9, y));
 }
 
+/** The facts only show while a climb is in progress, fading with its tier lines. */
 function drawLandmarks(ctx: CanvasRenderingContext2D, view: MarkersView) {
   const { x, half, width, progress } = view;
+  const climbing = view.lines?.alpha ?? 0;
+  if (climbing <= 0.01) return;
   // Dark ink over the day sky, pale once the sky turns to night.
   const night = smoothstep(0.66, 0.8, progress);
   const ink = mix(INK, WHITE, night * 0.9);
@@ -112,7 +115,7 @@ function drawLandmarks(ctx: CanvasRenderingContext2D, view: MarkersView) {
     let tx: number;
     if (left) tx = x - half - gap - tw >= 12 ? x - half - gap - tw : 12;
     else tx = x + half + gap + tw <= width - 12 ? x + half + gap : width - 12 - tw;
-    ctx.globalAlpha = view.alpha * fade * (mark.major ? 0.95 : 0.8);
+    ctx.globalAlpha = view.alpha * climbing * fade * (mark.major ? 0.95 : 0.8);
     ctx.shadowColor = rgba(halo, 0.8);
     ctx.shadowBlur = 8;
     ctx.fillStyle = rgba(mark.major ? mix(ACCENT, WHITE, night * 0.75) : ink, 1);
