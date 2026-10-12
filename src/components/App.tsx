@@ -56,10 +56,17 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
   const altitude = today ? today.altitude : run.altitude;
   const prompt = currentPrompt(run);
   const lastResult = run.results.at(-1);
+  const climb = useMemo(
+    () => (lastResult ? { id: run.results.length, rarity: lastResult.rarity } : null),
+    [lastResult, run.results.length],
+  );
 
   return (
     <>
-      <Background progress={Math.min(1, altitude / SUMMIT_ALTITUDE)} />
+      <Background
+        progress={Math.min(1, altitude / SUMMIT_ALTITUDE)}
+        climb={climb}
+      />
       <div className="layout">
         <header className="topbar">
           <h1 className="title">Summit</h1>
