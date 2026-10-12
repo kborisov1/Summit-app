@@ -38,10 +38,10 @@ export interface RoamInput {
 }
 
 // Speeds in runner heights per second: a stroll between answers, a run across during a climb.
-const STROLL_SPEED = 0.8;
-const CLIMB_SPEED = 2.4;
+const STROLL_SPEED = 1.5;
+const CLIMB_SPEED = 3.6;
 /** Seconds between the runner's decisions to stroll somewhere new. */
-const STROLL_SLOT = 5.5;
+const STROLL_SLOT = 7;
 /** How quickly the runner turns round, in facings per second. */
 const TURN_RATE = 7;
 /** Most the runner tilts into its motion, in radians. */

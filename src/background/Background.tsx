@@ -172,7 +172,8 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
       }
 
       const pxPerMetre = height / METRES_PER_SCREEN;
-      const range = area ? Math.min(width * 0.3, area.size * 1.6) : 0;
+      // The runner roams nearly edge to edge, keeping a little margin so it never leaves the screen.
+      const range = area ? Math.max(0, Math.min(area.x, width - area.x) - Math.max(area.size * 0.7, width * 0.05)) : 0;
       if (reducedMotion) roam = ROAM_START;
       else if (area) {
         roam = stepRoam(roam, {
