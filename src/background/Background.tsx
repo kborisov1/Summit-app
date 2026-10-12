@@ -2,18 +2,17 @@ import { useEffect, useRef, type RefObject } from 'react';
 import { LANDMARKS } from '../game/landmarks';
 import { RARITY_GAIN, SUMMIT_ALTITUDE } from '../game/scoring';
 import type { Rarity } from '../game/types';
-import { climbFx, HOLDING } from './climb';
+import { climbFx, STANDING } from './climb';
 import { CALM } from './climber';
 import type { Landing } from './markers';
 import { drawScene } from './scene';
-import { wallHalfWidth } from './wall';
 
 /** One answer's climb; a new `id` starts a new climb. */
 export interface ClimbEvent {
   id: number;
   /** Null for a timeout. */
   rarity: Rarity | null;
-  /** What the player typed, shown riding above the climber. */
+  /** What the player typed, shown riding above the runner. */
   answer: string;
 }
 
@@ -24,8 +23,8 @@ interface Props {
   /** Where earlier answers landed, marked on the mountain. */
   landings?: readonly Landing[];
   /**
-   * The empty box in the UI the climber climbs in, its base near the bottom
-   * edge. The climber and the mountain's markers fade out while the box is
+   * The empty box in the UI the runner climbs in, its base near the bottom
+   * edge. The runner and the mountain's markers fade out while the box is
    * not on the page.
    */
   climberAnchor?: RefObject<HTMLElement | null>;
@@ -156,12 +155,13 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
       }
 
       const pxPerMetre = height / METRES_PER_SCREEN;
-      // Mid-climb the climber pulls ahead of the camera, up the screen, then
+      // Mid-climb the runner pulls ahead of the camera, up the screen, then
       // the camera catches up as it arrives.
       const lead =
         area && active && fx ? fx.lead * Math.min(area.room * 0.45, (active.to - active.from) * pxPerMetre * 0.3) : 0;
       const climberY = area ? area.base - lead : 0;
-      const half = area ? wallHalfWidth(area.size, width) : 0;
+      // Half the runner's lane: facts and pennants sit either side of it.
+      const half = area ? Math.min(width * 0.3, Math.max(area.size * 1.3, 70)) : 0;
 
       drawScene(ctx, {
         width,
@@ -173,7 +173,6 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
         shake: fx?.shake,
         rush: fx?.rush,
         flash: fx?.flash,
-        wall: area && { x: area.x, base: area.base, size: area.size, offset: camera * pxPerMetre, alpha: presence },
         markers: area && {
           x: area.x,
           half,
@@ -201,7 +200,8 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
                   text: active.event.answer,
                   rarity: active.event.rarity,
                   x: area.x,
-                  y: climberY - area.size * 1.12,
+                  // Rides above the runner's head, leaps included.
+                  y: climberY - (fx.hop + 1.12) * area.size,
                   alpha: fx.chip,
                   lit: fx.lit,
                 }
@@ -212,7 +212,7 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
           y: climberY,
           size: area.size,
           alpha: presence,
-          pose: fx ?? HOLDING,
+          pose: fx ?? STANDING,
           mood: reducedMotion ? CALM : { look, tension, sinceMiss: time - missAt },
         },
       });

@@ -2,7 +2,7 @@
  * Pure canvas drawing for what is pinned to the mountain's world (scope
  * "Experience"): facts at their real heights, a pennant where each answer
  * landed, the tier lines of the climb in progress, and the answer chip that
- * rides above the climber. Everything is placed by altitude, so it scrolls
+ * rides above the runner. Everything is placed by altitude, so it scrolls
  * with the camera.
  */
 import type { Landmark } from '../game/landmarks';
@@ -20,7 +20,7 @@ export interface Landing {
 export interface MarkersView {
   width: number;
   height: number;
-  /** Centre and half width of the rock face, in CSS pixels. */
+  /** Centre and half width of the runner's lane, in CSS pixels. */
   x: number;
   half: number;
   /** Screen line the camera's altitude sits on, in CSS pixels. */
@@ -40,14 +40,14 @@ export interface MarkersView {
     from: number;
     /** The tier reached. */
     rarity: Rarity;
-    /** Where the climber's feet are now, so lines flash as it passes them. */
+    /** Where the runner's feet are now, so lines flash as it passes them. */
     climber: number;
     /** 0..1 */
     alpha: number;
     /** 0..1, how brightly the reached line is lit on arrival. */
     lit: number;
   } | null;
-  /** The answer riding above the climber, or null. */
+  /** The answer riding above the runner, or null. */
   chip: { text: string; rarity: Rarity; x: number; y: number; alpha: number; lit: number } | null;
 }
 
@@ -107,7 +107,7 @@ function drawLandmarks(ctx: CanvasRenderingContext2D, view: MarkersView) {
     ctx.letterSpacing = mark.major ? '0.18em' : '0.02em';
     const text = left ? `${mark.text}  ──` : `──  ${mark.text}`;
     const tw = ctx.measureText(text).width;
-    // Hug the cliff when there is room beside it, else sit at the screen edge.
+    // Sit beside the runner's lane when there is room, else at the screen edge.
     const gap = 10;
     let tx: number;
     if (left) tx = x - half - gap - tw >= 12 ? x - half - gap - tw : 12;
@@ -123,7 +123,7 @@ function drawLandmarks(ctx: CanvasRenderingContext2D, view: MarkersView) {
   ctx.shadowBlur = 0;
 }
 
-/** A small pennant on the cliff where each answer landed, with its tier and answer. */
+/** A small pennant in the air where each answer landed, with its tier and answer. */
 function drawLandings(ctx: CanvasRenderingContext2D, view: MarkersView) {
   const { x, half } = view;
   ctx.font = `600 11px ${SANS}`;
@@ -132,8 +132,8 @@ function drawLandings(ctx: CanvasRenderingContext2D, view: MarkersView) {
     const fade = edgeFade(view, y);
     if (fade <= 0.01) continue;
     const color = TIER_COLOR[landing.rarity];
-    // Planted left of the climber's line, flying away from it, so the label
-    // never crosses the climber standing at the newest landing.
+    // Planted left of the runner's line, flying away from it, so the label
+    // never crosses the runner standing at the newest landing.
     const pole = x - half * 0.4;
     ctx.globalAlpha = view.alpha * fade;
     ctx.strokeStyle = rgba(INK, 0.8);
@@ -162,7 +162,7 @@ function drawLandings(ctx: CanvasRenderingContext2D, view: MarkersView) {
   }
 }
 
-/** Dashed chalk lines at each tier's gain; each flashes in its colour as the climber passes. */
+/** Dashed chalk lines at each tier's gain; each flashes in its colour as the runner passes. */
 function drawTierLines(ctx: CanvasRenderingContext2D, view: MarkersView) {
   const { lines, width } = view;
   if (!lines || lines.alpha <= 0.01) return;
@@ -203,7 +203,7 @@ function drawTierLines(ctx: CanvasRenderingContext2D, view: MarkersView) {
   ctx.shadowBlur = 0;
 }
 
-/** The answer in a pill above the climber, turning the tier's colour on arrival. */
+/** The answer in a pill above the runner, turning the tier's colour on arrival. */
 function drawChip(ctx: CanvasRenderingContext2D, view: MarkersView) {
   const { chip } = view;
   if (!chip || chip.alpha <= 0.01) return;

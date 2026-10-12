@@ -6,7 +6,6 @@
  */
 import { drawClimber, type ClimberView } from './climber';
 import { drawMarkers, type MarkersView } from './markers';
-import { drawWall, type WallView } from './wall';
 
 export interface SceneView {
   width: number;
@@ -20,10 +19,8 @@ export interface SceneView {
   shake?: number;
   rush?: number;
   flash?: number;
-  /** The climber, when one is on screen; the scene picks its colours. */
+  /** The runner, when one is on screen; the scene picks its colours. */
   climber?: Omit<ClimberView, 'time' | 'ink'> | null;
-  /** The rock face behind the climber; the scene picks its colours. */
-  wall?: Omit<WallView, 'width' | 'height' | 'rock' | 'snow'> | null;
   /** What is pinned to the mountain: facts, landings, tier lines, the answer chip. */
   markers?: Omit<MarkersView, 'width' | 'height' | 'progress'> | null;
 }
@@ -103,20 +100,9 @@ export function drawScene(ctx: CanvasRenderingContext2D, view: SceneView): void 
   drawDawn(ctx, view, 0.4 * (1 - smoothstep(0.12, 0.34, p)));
   drawMotes(ctx, view, 1 - smoothstep(0.1, 0.32, p));
   drawGustStreaks(ctx, view, 1 - smoothstep(0.1, 0.32, p));
-  // The face and climber are nearest the camera, so they move most with each step.
+  // The markers and runner are nearest the camera, so they move most with each step.
   const nearX = (view.shake ?? 0) * width * 1.4;
   const nearY = -(view.bob ?? 0) * height * 1.4;
-  if (view.wall) {
-    drawWall(ctx, {
-      ...view.wall,
-      x: view.wall.x + nearX,
-      base: view.wall.base + nearY,
-      width,
-      height,
-      rock: mix(ramp(GROUND_TINT, p), horizon, 0.35),
-      snow: smoothstep(0.35, 0.6, p),
-    });
-  }
   if (view.markers) {
     drawMarkers(ctx, {
       ...view.markers,
