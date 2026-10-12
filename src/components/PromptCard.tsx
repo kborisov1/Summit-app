@@ -18,8 +18,6 @@ interface Props {
   climberRef?: Ref<HTMLDivElement>;
   /** Told whether there is text in the field, so the climber can look up. */
   onTypingChange?: (typing: boolean) => void;
-  /** Told of every keystroke in the field, so the climber can follow along. */
-  onKeystroke?: () => void;
   /** Told when time starts running low, so the climber can grow restless. */
   onLowTimeChange?: (low: boolean) => void;
 }
@@ -34,7 +32,6 @@ export function PromptCard({
   notice,
   climberRef,
   onTypingChange,
-  onKeystroke,
   onLowTimeChange,
 }: Props) {
   const [input, setInput] = useState('');
@@ -94,10 +91,7 @@ export function PromptCard({
           type="text"
           aria-labelledby={questionId}
           value={input}
-          onChange={(e) => {
-            setInput(e.target.value);
-            onKeystroke?.();
-          }}
+          onChange={(e) => setInput(e.target.value)}
           placeholder="Your answer"
           autoComplete="off"
           data-1p-ignore

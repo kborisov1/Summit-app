@@ -26,14 +26,6 @@ describe('PromptCard climber cues', () => {
     expect(onTypingChange).toHaveBeenLastCalledWith(false);
   });
 
-  it('reports each keystroke, so the climber can nod along', () => {
-    const onKeystroke = vi.fn();
-    renderCard({ onKeystroke });
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'A' } });
-    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'An' } });
-    expect(onKeystroke).toHaveBeenCalledTimes(2);
-  });
-
   it('reports when time runs low, and clears both cues on unmount', () => {
     vi.useFakeTimers();
     const onLowTimeChange = vi.fn();
