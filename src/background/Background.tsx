@@ -1,7 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react';
 import type { Rarity } from '../game/types';
-import { climbFx, STANDING } from './climb';
-import { strideLength } from './climber';
+import { climbFx, HOLDING } from './climb';
 import { drawScene } from './scene';
 
 /** One answer's climb; a new `id` starts a new camera move. */
@@ -62,11 +61,10 @@ export function Background({ progress, climb = null, climberAnchor }: Props) {
     let wind = 0;
     // The climb in progress: where it started and when.
     let seenClimbId = climbRef.current?.id ?? null;
-    let active: { rarity: Rarity | null; from: number; start: number; ground: number } | null = null;
-    // The climber: where it stands, how visible it is, and how far the ledge has scrolled.
+    let active: { rarity: Rarity | null; from: number; start: number } | null = null;
+    // The climber: where it hangs and how visible it is.
     let spot: { x: number; y: number; size: number } | null = null;
     let presence = 0;
-    let ground = 0;
     let last = performance.now();
     let frame = 0;
     let width = 0;
@@ -89,7 +87,7 @@ export function Background({ progress, climb = null, climberAnchor }: Props) {
       const event = climbRef.current;
       if (event && event.id !== seenClimbId) {
         seenClimbId = event.id;
-        active = { rarity: event.rarity, from: shown, start: time, ground };
+        active = { rarity: event.rarity, from: shown, start: time };
       }
 
       const anchor = anchorRef.current?.current;
@@ -110,7 +108,6 @@ export function Background({ progress, climb = null, climberAnchor }: Props) {
         if (active) {
           fx = climbFx(active.rarity, time - active.start);
           shown = active.from + (target - active.from) * fx.travel;
-          ground = active.ground + fx.distance * strideLength(fx.gait);
           if (fx.done) active = null;
         } else {
           shown += (target - shown) * Math.min(1, dt * EASE_RATE);
@@ -127,7 +124,7 @@ export function Background({ progress, climb = null, climberAnchor }: Props) {
         shake: fx?.shake,
         rush: fx?.rush,
         flash: fx?.flash,
-        climber: spot && { ...spot, alpha: presence, ground, pose: fx ?? STANDING },
+        climber: spot && { ...spot, alpha: presence, pose: fx ?? HOLDING },
       });
       // With reduced motion, frames are drawn only when something changes.
       if (!reducedMotion && !document.hidden) schedule();

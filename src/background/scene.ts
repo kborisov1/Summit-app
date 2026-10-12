@@ -19,7 +19,7 @@ export interface SceneView {
   rush?: number;
   flash?: number;
   /** The climber, when one is on screen; the scene picks its colours. */
-  climber?: Omit<ClimberView, 'time' | 'rock' | 'snow' | 'ink'> | null;
+  climber?: Omit<ClimberView, 'time' | 'ink'> | null;
 }
 
 type Rgb = [number, number, number];
@@ -104,8 +104,6 @@ export function drawScene(ctx: CanvasRenderingContext2D, view: SceneView): void 
       x: view.climber.x + (view.shake ?? 0) * width * 1.4,
       y: view.climber.y - (view.bob ?? 0) * height * 1.4,
       time: view.time,
-      rock: mix(ramp(GROUND_TINT, p), horizon, 0.3),
-      snow: smoothstep(0.35, 0.6, p),
       ink: mix(DARK, horizon, 0.12),
     });
   }
