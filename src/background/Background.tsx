@@ -1,27 +1,41 @@
 import { useEffect, useRef } from 'react';
+import type { Rarity } from '../game/types';
+import { climbFx } from './climb';
 import { drawScene } from './scene';
+
+/** One answer's climb; a new `id` starts a new camera move. */
+export interface ClimbEvent {
+  id: number;
+  /** Null for a wrong answer or a timeout. */
+  rarity: Rarity | null;
+}
 
 interface Props {
   /** 0 at the trailhead, 1 at the summit. */
   progress: number;
+  climb?: ClimbEvent | null;
 }
 
-/** How quickly the scene eases toward a new altitude, per second. */
+/** How quickly the scene eases toward a new altitude without a climb, per second. */
 const EASE_RATE = 1.6;
+/** How much faster the wind runs at full rush. */
+const RUSH_WIND = 6;
 
 /**
  * Full-screen canvas behind the UI. The loop reads progress from a ref so
  * frames are not tied to React renders (architecture "Rendering").
  */
-export function Background({ progress }: Props) {
+export function Background({ progress, climb = null }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const targetRef = useRef(progress);
+  const climbRef = useRef(climb);
   const wakeRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     targetRef.current = progress;
+    climbRef.current = climb;
     wakeRef.current();
-  }, [progress]);
+  }, [progress, climb]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -32,6 +46,10 @@ export function Background({ progress }: Props) {
     let reducedMotion = motionQuery?.matches ?? false;
     let shown = targetRef.current;
     let time = 0;
+    let wind = 0;
+    // The climb in progress: where it started and when.
+    let seenClimbId = climbRef.current?.id ?? null;
+    let active: { rarity: Rarity | null; from: number; start: number } | null = null;
     let last = performance.now();
     let frame = 0;
     let width = 0;
@@ -51,13 +69,38 @@ export function Background({ progress }: Props) {
       const dt = Math.min(0.1, (now - last) / 1000);
       last = now;
       const target = targetRef.current;
+      const event = climbRef.current;
+      if (event && event.id !== seenClimbId) {
+        seenClimbId = event.id;
+        active = { rarity: event.rarity, from: shown, start: time };
+      }
+
+      let fx = null;
       if (reducedMotion) {
         shown = target;
+        active = null;
       } else {
         time += dt;
-        shown += (target - shown) * Math.min(1, dt * EASE_RATE);
+        if (active) {
+          fx = climbFx(active.rarity, time - active.start);
+          shown = active.from + (target - active.from) * fx.travel;
+          if (fx.done) active = null;
+        } else {
+          shown += (target - shown) * Math.min(1, dt * EASE_RATE);
+        }
+        wind += dt * (1 + RUSH_WIND * (fx?.rush ?? 0));
       }
-      drawScene(ctx, { width, height, progress: shown, time });
+      drawScene(ctx, {
+        width,
+        height,
+        progress: shown,
+        time,
+        wind,
+        bob: fx?.bob,
+        shake: fx?.shake,
+        rush: fx?.rush,
+        flash: fx?.flash,
+      });
       // With reduced motion, frames are drawn only when something changes.
       if (!reducedMotion && !document.hidden) schedule();
     };

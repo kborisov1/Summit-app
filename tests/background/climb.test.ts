@@ -1,0 +1,35 @@
+import { describe, expect, it } from 'vitest';
+import { climbDuration, climbFx } from '../../src/background/climb';
+
+describe('climbFx', () => {
+  it('travels from the old altitude to the new one', () => {
+    expect(climbFx(3, 0).travel).toBe(0);
+    expect(climbFx(3, climbDuration(3) / 2).travel).toBeCloseTo(0.5);
+    const end = climbFx(3, climbDuration(3));
+    expect(end.travel).toBe(1);
+    expect(end.done).toBe(true);
+  });
+
+  it('settles all effects on arrival', () => {
+    const end = climbFx(5, climbDuration(5));
+    expect(Math.abs(end.rush)).toBeLessThan(1e-9);
+    expect(Math.abs(end.flash)).toBeLessThan(1e-9);
+    expect(Math.abs(end.bob)).toBeLessThan(1e-9);
+  });
+
+  it('makes rarer answers climb longer and more dramatically', () => {
+    expect(climbDuration(5)).toBeGreaterThan(climbDuration(1));
+    const mid = (r: 1 | 5) => climbFx(r, climbDuration(r) / 2);
+    expect(mid(5).rush).toBeGreaterThan(mid(1).rush);
+    expect(mid(1).flash).toBe(0);
+    expect(mid(5).flash).toBeGreaterThan(0);
+  });
+
+  it('stumbles without climbing on a wrong answer', () => {
+    const fx = climbFx(null, 0.1);
+    expect(fx.travel).toBe(0);
+    expect(fx.shake).not.toBe(0);
+    expect(fx.rush).toBe(0);
+    expect(climbFx(null, climbDuration(null)).done).toBe(true);
+  });
+});
