@@ -8,6 +8,9 @@ interface Props {
 
 /** What the last answer earned. A miss costs nothing (scope "Success Criteria"). */
 export function Feedback({ result }: Props) {
+  if (result.input === '') {
+    return <p className="feedback feedback--miss">Out of time. No altitude gained.</p>;
+  }
   if (result.answer === null || result.rarity === null) {
     return (
       <p className="feedback feedback--miss">

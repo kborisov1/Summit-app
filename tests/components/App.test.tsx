@@ -1,6 +1,7 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/components/App';
+import { PROMPT_TIME_LIMIT_MS } from '../../src/game/run';
 import type { Prompt, PromptSet } from '../../src/game/types';
 import { loadProgress, STORAGE_KEY, type KeyValueStore } from '../../src/storage/progress';
 
@@ -95,5 +96,55 @@ describe('App run flow', () => {
     renderApp(memoryStore({ [STORAGE_KEY]: first.data[STORAGE_KEY] }));
     expect(screen.getByRole('heading', { name: 'You climbed to 910 m' })).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+});
+
+describe('App prompt timer', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const advance = (ms: number) =>
+    act(() => {
+      vi.advanceTimersByTime(ms);
+    });
+
+  it('counts down from 30 seconds', () => {
+    vi.useFakeTimers();
+    renderApp();
+    expect(screen.getByRole('timer')).toHaveTextContent('30s');
+    advance(10_000);
+    expect(screen.getByRole('timer')).toHaveTextContent('20s');
+  });
+
+  it('moves on with no altitude when time runs out, ignoring unsubmitted text', () => {
+    vi.useFakeTimers();
+    renderApp();
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Legendary' } });
+    advance(PROMPT_TIME_LIMIT_MS);
+
+    expect(meterValue()).toBe('0');
+    expect(screen.getByText('Out of time. No altitude gained.')).toBeInTheDocument();
+    expect(screen.getByText('Step 2 of 7')).toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toHaveValue('');
+  });
+
+  it('restarts the clock for each prompt', () => {
+    vi.useFakeTimers();
+    renderApp();
+    advance(20_000);
+    answer('Rare');
+    expect(screen.getByRole('timer')).toHaveTextContent('30s');
+    advance(PROMPT_TIME_LIMIT_MS - 1_000);
+    expect(screen.getByText('Step 2 of 7')).toBeInTheDocument();
+  });
+
+  it('shows timed-out prompts on the result screen', () => {
+    vi.useFakeTimers();
+    renderApp();
+    for (let i = 0; i < 7; i++) advance(PROMPT_TIME_LIMIT_MS);
+
+    expect(screen.getByRole('heading', { name: 'You climbed to 0 m' })).toBeInTheDocument();
+    expect(screen.getAllByText(/Out of time/)).toHaveLength(7);
   });
 });
