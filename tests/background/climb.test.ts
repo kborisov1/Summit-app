@@ -4,7 +4,9 @@ import { climbDuration, climbFx } from '../../src/background/climb';
 describe('climbFx', () => {
   it('travels from the old altitude to the new one', () => {
     expect(climbFx(3, 0).travel).toBe(0);
-    expect(climbFx(3, climbDuration(3) / 2).travel).toBeCloseTo(0.5);
+    // The camera sets off promptly and spends the back half settling.
+    expect(climbFx(3, climbDuration(3) * 0.1).travel).toBeGreaterThan(0.05);
+    expect(climbFx(3, climbDuration(3) / 2).travel).toBeGreaterThan(0.75);
     const end = climbFx(3, climbDuration(3));
     expect(end.travel).toBe(1);
     expect(end.done).toBe(true);
@@ -23,6 +25,16 @@ describe('climbFx', () => {
     expect(mid(5).rush).toBeGreaterThan(mid(1).rush);
     expect(mid(1).flash).toBe(0);
     expect(mid(5).flash).toBeGreaterThan(0);
+  });
+
+  it('moves the camera without a jolt or a lurch', () => {
+    const d = climbDuration(5);
+    const n = 400;
+    // Speed relative to an even climb over the same time.
+    const speeds = Array.from({ length: n }, (_, i) => (climbFx(5, (d * (i + 1)) / n).travel - climbFx(5, (d * i) / n).travel) * n);
+    expect(Math.min(...speeds)).toBeGreaterThanOrEqual(0);
+    expect(speeds[0]).toBeLessThan(1);
+    expect(Math.max(...speeds)).toBeLessThan(2.75);
   });
 
   it('stumbles without climbing on a wrong answer', () => {

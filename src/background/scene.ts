@@ -65,6 +65,8 @@ const STAR_COUNT = 90;
 const BIRD_COUNT = 4;
 const STREAK_COUNT = 36;
 const TREE_SLOTS = 140;
+/** How much of the tree density a single tree takes to fade out. */
+const TREE_FADE = 0.15;
 
 export function drawScene(ctx: CanvasRenderingContext2D, view: SceneView): void {
   const { width, height } = view;
@@ -222,8 +224,12 @@ function drawTrees(
 ) {
   if (density <= 0) return;
   ctx.fillStyle = rgb(color);
+  const prev = ctx.globalAlpha;
   for (let k = 0; k < TREE_SLOTS; k++) {
-    if (hash(k * 5.9 + depth * 17) > density * 0.75) continue;
+    // Each tree fades out over a short stretch of the climb instead of vanishing.
+    const fade = clamp01((density * 0.75 - hash(k * 5.9 + depth * 17)) / TREE_FADE);
+    if (fade <= 0) continue;
+    ctx.globalAlpha = prev * fade;
     const u = (k + hash(k * 2.3)) / TREE_SLOTS;
     // Treetops lean in a slow breeze; each tree is a little out of step.
     // A gust sweeps left to right, so it reaches each tree a moment apart.
@@ -244,6 +250,7 @@ function drawTrees(
     }
     ctx.fill();
   }
+  ctx.globalAlpha = prev;
 }
 
 function drawClouds(ctx: CanvasRenderingContext2D, view: SceneView, p: number, storm: number) {
