@@ -91,22 +91,6 @@ body {
   gap: 8px;
 }
 
-.meter__readout {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.meter__value {
-  font-family: var(--serif);
-  font-size: 2rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
-  text-shadow: 0 1px 12px rgba(255, 255, 255, 0.5);
-}
-
 .meter__scale {
   --edge: rgba(43, 50, 69, 0.55);
   position: relative;
@@ -216,19 +200,9 @@ body {
     gap: 14px;
   }
 
-  .meter__readout {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0;
-  }
-
-  .meter__value {
-    font-size: 2.4rem;
-  }
-
   .meter__scale {
     width: 96px;
-    height: 46vh;
+    height: 74vh;
     margin: 0;
   }
 

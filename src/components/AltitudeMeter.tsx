@@ -49,9 +49,6 @@ export function AltitudeMeter({ altitude }: Props) {
       aria-valuenow={shown}
       aria-valuetext={`${formatMetres(shown)} of ${formatMetres(SUMMIT_ALTITUDE)}`}
     >
-      <div className="meter__readout">
-        <span className="meter__value">{formatMetres(shown)}</span>
-      </div>
       <div className="meter__scale" style={{ '--fill': fraction } as CSSProperties} aria-hidden="true">
         <div className="meter__track">
           <div className="meter__fill" />
