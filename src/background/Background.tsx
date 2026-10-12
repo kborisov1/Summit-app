@@ -35,6 +35,8 @@ interface Props {
 
 export interface ClimberCues {
   typing: boolean;
+  /** Changes with every keystroke in the answer bar. */
+  keystrokes?: number;
   lowTime: boolean;
   /** Changes with every wrong answer. */
   missId: string | null;
@@ -96,13 +98,15 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
     let seenClimbId = climbRef.current?.id ?? null;
     let active: { event: ClimbEvent; from: number; to: number; start: number; startX: number } | null = null;
     // The climbing area and how visible it is.
-    let area: { x: number; base: number; size: number; room: number } | null = null;
+    let area: { x: number; half: number; base: number; size: number; room: number } | null = null;
     let presence = 0;
     // The climber's mood.
     let look = 0;
     let tension = 0;
     let seenMissId = cuesRef.current.missId;
     let missAt = -Infinity;
+    let seenKeystrokes = cuesRef.current.keystrokes ?? 0;
+    let keyAt = -Infinity;
     let roam = ROAM_START;
     let last = performance.now();
     let frame = 0;
@@ -133,6 +137,10 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
         seenMissId = cue.missId;
         if (cue.missId !== null) missAt = time;
       }
+      if ((cue.keystrokes ?? 0) !== seenKeystrokes) {
+        seenKeystrokes = cue.keystrokes ?? 0;
+        keyAt = time;
+      }
 
       const anchor = anchorRef.current?.current;
       if (anchor?.isConnected) {
@@ -143,6 +151,7 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
         area = area
           ? {
               x: area.x + (measured.x - area.x) * k,
+              half: area.half + (measured.half - area.half) * k,
               base: area.base + (measured.base - area.base) * k,
               size: area.size + (measured.size - area.size) * k,
               room: area.room + (measured.room - area.room) * k,
@@ -181,6 +190,7 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
           time,
           size: area.size,
           range,
+          bar: Math.max(0, area.half - area.size * 0.5),
           climb: active && { id: active.event.id, startX: active.startX },
           typing: cue.typing,
           hop: fx?.hop ?? 0,
@@ -248,7 +258,7 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
           tilt: roam.tilt,
           alpha: presence,
           pose,
-          mood: reducedMotion ? CALM : { look, tension, sinceMiss: time - missAt },
+          mood: reducedMotion ? CALM : { look, tension, sinceMiss: time - missAt, sinceKey: time - keyAt },
         },
       });
       // With reduced motion, frames are drawn only when something changes.
@@ -302,7 +312,7 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
 function climbingArea(box: DOMRect) {
   const size = Math.min(92, Math.max(44, box.height * 0.24));
   const base = box.bottom - size * 0.25;
-  return { x: box.left + box.width / 2, base, size, room: Math.max(0, base - box.top - size * 1.6) };
+  return { x: box.left + box.width / 2, half: box.width / 2, base, size, room: Math.max(0, base - box.top - size * 1.6) };
 }
 
 function approach(value: number, target: number, step: number): number {

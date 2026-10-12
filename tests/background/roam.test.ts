@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ROAM_START, roamGoal, stepRoam, type Roam, type RoamInput } from '../../src/background/roam';
 
-const base: RoamInput = { dt: 1 / 60, time: 0, size: 80, range: 120, climb: null, typing: false, hop: 0 };
+const base: RoamInput = { dt: 1 / 60, time: 0, size: 80, range: 120, bar: 60, climb: null, typing: false, hop: 0 };
 
 /** Steps the runner for `seconds`, letting `input` vary with time. */
 function run(seconds: number, input: (t: number) => Partial<RoamInput> = () => ({}), from: Roam = ROAM_START) {
@@ -15,6 +15,18 @@ function run(seconds: number, input: (t: number) => Partial<RoamInput> = () => (
 }
 
 describe('stepRoam', () => {
+  it('takes short strolls rather than long marches', () => {
+    const wide = { range: 800 };
+    const { trace } = run(120, () => wide);
+    for (let i = 1; i < trace.length; i++) {
+      if (trace[i].goal !== trace[i - 1].goal) {
+        expect(Math.abs(trace[i].goal - trace[i - 1].x)).toBeLessThanOrEqual(3 * base.size + 1);
+      }
+    }
+    const xs = trace.map((r) => r.x);
+    expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(base.size);
+  });
+
   it('strolls about between answers, staying inside its lane', () => {
     const { trace } = run(60);
     const xs = trace.map((r) => r.x);
@@ -48,10 +60,16 @@ describe('stepRoam', () => {
     }
   });
 
-  it('stops to look up while the player types', () => {
+  it('stops to watch while the player types', () => {
     const moving = { ...ROAM_START, v: 60 };
     const { roam } = run(2, () => ({ typing: true }), moving);
     expect(Math.abs(roam.v)).toBeLessThan(1);
+  });
+
+  it('comes in over the answer bar and turns toward its middle while the player types', () => {
+    const { roam } = run(3, () => ({ typing: true }), { ...ROAM_START, x: 110, facing: 1 });
+    expect(roam.x).toBeLessThanOrEqual(base.bar + 1);
+    expect(roam.facing).toBe(-1);
   });
 
   it('leans into its motion and pitches with a leap', () => {

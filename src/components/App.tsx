@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { Background } from '../background/Background';
 import { promptSets as bundledSets } from '../game/content';
 import { dayNumber, selectSet, toDayKey } from '../game/daily';
@@ -46,6 +46,8 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
   const [run, dispatch] = useReducer(runReducer, set, createRun);
   const climberRef = useRef<HTMLDivElement>(null);
   const [typing, setTyping] = useState(false);
+  const [keystrokes, setKeystrokes] = useState(0);
+  const countKeystroke = useCallback(() => setKeystrokes((n) => n + 1), []);
   const [lowTime, setLowTime] = useState(false);
   // Results the player has seen the landing banner for; the next prompt waits until then.
   const [seen, setSeen] = useState(0);
@@ -88,7 +90,7 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
         climb={climb}
         landings={landings}
         climberAnchor={climberRef}
-        cues={{ typing, lowTime, missId: run.miss ? `${run.results.length}-${run.miss.count}` : null }}
+        cues={{ typing, keystrokes, lowTime, missId: run.miss ? `${run.results.length}-${run.miss.count}` : null }}
       />
       <div className={lowTime ? 'layout low-time' : 'layout'}>
         <header className="topbar">
@@ -121,6 +123,7 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
               onTimeout={() => dispatch({ type: 'timeout' })}
               climberRef={climberRef}
               onTypingChange={setTyping}
+              onKeystroke={countKeystroke}
               onLowTimeChange={setLowTime}
               notice={run.miss && <Feedback key={`miss-${run.results.length}-${run.miss.count}`} miss={run.miss.input} />}
             />
