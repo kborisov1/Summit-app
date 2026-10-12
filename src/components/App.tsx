@@ -80,7 +80,11 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
           ) : prompt ? (
             <>
               <div className="feedback-slot" aria-live="polite">
-                {lastResult && <Feedback key={run.results.length} result={lastResult} />}
+                {run.miss ? (
+                  <Feedback key={`miss-${run.results.length}-${run.miss.count}`} miss={run.miss.input} />
+                ) : (
+                  lastResult && <Feedback key={run.results.length} result={lastResult} />
+                )}
               </div>
               <PromptCard
                 key={prompt.id}

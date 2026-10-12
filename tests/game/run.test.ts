@@ -42,11 +42,24 @@ describe('run reducer', () => {
     });
   });
 
-  it('moves on with no gain after a wrong answer', () => {
-    const state = play(['nope']);
+  it('stays on the prompt with no gain after a wrong answer, allowing unlimited retries', () => {
+    let state = play(['nope', 'nada', 'still no']);
     expect(state.altitude).toBe(0);
+    expect(state.promptIndex).toBe(0);
+    expect(state.results).toHaveLength(0);
+    expect(state.miss).toEqual({ input: 'still no', count: 3 });
+
+    state = runReducer(state, { type: 'submit', input: 'rare' });
     expect(state.promptIndex).toBe(1);
-    expect(state.results[0]).toMatchObject({ answer: null, rarity: null, gain: 0 });
+    expect(state.miss).toBeNull();
+    expect(state.results[0]).toMatchObject({ answer: 'rare', gain: 650 });
+  });
+
+  it('still moves on at timeout after wrong answers', () => {
+    const state = runReducer(play(['nope']), { type: 'timeout' });
+    expect(state.promptIndex).toBe(1);
+    expect(state.miss).toBeNull();
+    expect(state.results[0]).toMatchObject({ input: '', gain: 0 });
   });
 
   it('ignores blank input without using the attempt', () => {
