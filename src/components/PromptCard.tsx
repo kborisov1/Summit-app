@@ -24,6 +24,8 @@ export function PromptCard({ prompt, number, total, onSubmit, onTimeout }: Props
     // A blank answer does not use the attempt (scope "Core Mechanic").
     if (input.trim() === '') return;
     onSubmit(input);
+    // A wrong answer keeps this card mounted, so clear it for the next try.
+    setInput('');
   };
 
   return (

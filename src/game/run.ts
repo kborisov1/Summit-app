@@ -22,6 +22,8 @@ export interface RunState {
   /** Raw altitude; use `displayAltitude` for the HUD. */
   altitude: number;
   results: PromptResult[];
+  /** The latest wrong guess on the current prompt; `count` increases with each one. */
+  miss: { input: string; count: number } | null;
   status: 'playing' | 'finished';
 }
 
@@ -34,6 +36,7 @@ export function createRun(set: PromptSet): RunState {
     promptIndex: 0,
     altitude: 0,
     results: [],
+    miss: null,
     status: set.prompts.length === 0 ? 'finished' : 'playing',
   };
 }
@@ -52,14 +55,15 @@ function advance(state: RunState, result: PromptResult): RunState {
     promptIndex,
     altitude,
     results: [...state.results, result],
+    miss: null,
     status: finished ? 'finished' : 'playing',
   };
 }
 
 /**
- * Each prompt gets one attempt; a wrong answer or running out of time gains
- * nothing and moves on (scope "Core Mechanic"). Blank input is ignored and
- * does not use the attempt.
+ * A wrong answer gains nothing and keeps the player on the same prompt, with
+ * unlimited retries until the timer expires; running out of time gains nothing
+ * and moves on (scope "Core Mechanic"). Blank input is ignored.
  */
 export function runReducer(state: RunState, action: RunAction): RunState {
   const prompt = currentPrompt(state);
@@ -70,13 +74,15 @@ export function runReducer(state: RunState, action: RunAction): RunState {
       if (action.input.trim() === '') return state;
 
       const match = matchAnswer(prompt, action.input);
-      const rarity = match.kind === 'match' ? match.answer.rarity : null;
+      if (match.kind !== 'match') {
+        return { ...state, miss: { input: action.input.trim(), count: (state.miss?.count ?? 0) + 1 } };
+      }
       return advance(state, {
         promptId: prompt.id,
         input: action.input.trim(),
-        answer: match.kind === 'match' ? match.answer.canonical : null,
-        rarity,
-        gain: gainFor(rarity),
+        answer: match.answer.canonical,
+        rarity: match.answer.rarity,
+        gain: gainFor(match.answer.rarity),
       });
     }
     case 'timeout':

@@ -61,12 +61,14 @@ describe('App run flow', () => {
     expect(screen.getByRole('heading', { name: 'Question 1?' })).toBeInTheDocument();
   });
 
-  it('moves on without altitude after a wrong answer', () => {
+  it('stays on the same question after a wrong answer', () => {
     renderApp();
     answer('banana');
+    answer('apple');
     expect(meterValue()).toBe('0');
     expect(screen.getByText(/isn’t on the trail/)).toBeInTheDocument();
-    expect(screen.getByText('Step 2 of 7')).toBeInTheDocument();
+    expect(screen.getByText('Step 1 of 7')).toBeInTheDocument();
+    expect(screen.getByRole('textbox')).toHaveValue('');
   });
 
   it('ignores a blank answer', () => {

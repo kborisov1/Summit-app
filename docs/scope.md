@@ -21,7 +21,7 @@ The game is inspired by Krillion.io, a trivia "deep dive" game, but uses a mount
 
 - Each prompt has a set of accepted answers. Each answer has a rarity level.
 - The player types an answer. Common answers give small altitude gains. Rare answers give large gains.
-- Each prompt gets one attempt. A wrong answer gains no altitude and the run moves on to the next prompt. Submitting a blank answer does not use the attempt.
+- A prompt allows unlimited attempts. A wrong answer gains no altitude, keeps the player on the same prompt, and does not change the timer. The player can keep trying until the prompt is answered correctly or time runs out. Submitting a blank answer does nothing.
 - Each prompt has a 30-second timer. When time runs out, the prompt gains no altitude and the run moves on to the next prompt. Text typed but not submitted is not scored.
 - The run ends when the player reaches the summit or after the last prompt.
 - Autocorrect and alias matching should be forgiving enough to feel fair, without accepting clearly wrong answers.
@@ -63,7 +63,7 @@ Design rules:
 - An interactive background with layered mountains, drifting clouds, and weather that reacts to the player's progress.
   - The scenery passes through four zones as altitude rises: forest foothills with valley mist, alpine rock with circling birds, a glacier snowstorm, and a clear death zone with stars and a sea of clouds below, ending in a sunrise at the summit.
   - Weather depends only on altitude.
-  - Each answer plays a camera climb with no visible climber. Rarer answers climb longer and more dramatically: common answers take a gentle step, rare and above add an updraft, and very rare and legendary answers end in a golden glow. A wrong answer or a timeout plays a small stumble with no climb.
+  - Each answer plays a camera climb with no visible climber. Rarer answers climb longer and more dramatically: common answers take a gentle step, rare and above add an updraft, and very rare and legendary answers end in a golden glow. A timeout plays a small stumble with no climb; a wrong answer plays nothing, since the player stays on the same prompt.
 - A simple, readable altitude meter as the main HUD element.
 - No sound. The game is meant to feel calm and visual.
 
