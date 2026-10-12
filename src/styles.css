@@ -501,6 +501,38 @@ body {
   box-shadow: 0 0 0 3px rgba(63, 74, 122, 0.2);
 }
 
+/* With the on-screen keyboard open, fit the question, climber and answer bar
+   into the visible part of the screen (see useKeyboardInset). */
+.keyboard-open .layout {
+  height: var(--visible-height);
+  min-height: 0;
+  padding: 8px 16px;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.keyboard-open .topbar,
+.keyboard-open .prompt__step {
+  display: none;
+}
+
+.keyboard-open .stage {
+  padding-bottom: 0;
+  min-height: 0;
+}
+
+.keyboard-open .prompt__head {
+  padding-top: 0;
+}
+
+.keyboard-open .prompt__question {
+  font-size: 1.35rem;
+}
+
+.keyboard-open .prompt__scene {
+  min-height: 0;
+}
+
 @media (max-width: 480px) {
   .stage--run {
     --bar-height: 72px;
