@@ -59,11 +59,13 @@ export function climbFx(rarity: Rarity | null, elapsed: number): ClimbFx {
   }
 
   const tier = TIERS[rarity];
-  // Swells in the middle of the climb and settles on arrival.
-  const swell = Math.sin(Math.PI * u);
+  // Swells with the camera's speed, which peaks early, and settles on arrival.
+  const swell = 6.75 * u * (1 - u) ** 2;
+  // Each step lifts and lowers the camera with no hard bounce at the bottom.
+  const step = Math.sin(elapsed * STEP_RATE * Math.PI) ** 2;
   return {
-    travel: easeInOutCubic(u),
-    bob: -STEP_HEIGHT * Math.abs(Math.sin(elapsed * STEP_RATE * Math.PI)) * swell,
+    travel: climbEase(u),
+    bob: -STEP_HEIGHT * step * swell,
     shake: 0,
     rush: tier.rush * swell,
     // The glow builds toward arrival, then fades out.
@@ -72,6 +74,29 @@ export function climbFx(rarity: Rarity | null, elapsed: number): ClimbFx {
   };
 }
 
-function easeInOutCubic(t: number): number {
-  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+// cubic-bezier(0.3, 0.15, 0.2, 1): sets off at once, without a jolt, and
+// spends the rest of the climb settling, so the camera keeps pace with the
+// altitude meter instead of lagging and then lurching through the middle.
+const EASE_X1 = 0.3;
+const EASE_Y1 = 0.15;
+const EASE_X2 = 0.2;
+const EASE_Y2 = 1;
+
+function climbEase(u: number): number {
+  if (u <= 0) return 0;
+  if (u >= 1) return 1;
+  // The curve's x is monotonic in its parameter, so bisection finds it.
+  let lo = 0;
+  let hi = 1;
+  for (let i = 0; i < 24; i++) {
+    const mid = (lo + hi) / 2;
+    if (bezier(EASE_X1, EASE_X2, mid) < u) lo = mid;
+    else hi = mid;
+  }
+  return bezier(EASE_Y1, EASE_Y2, (lo + hi) / 2);
+}
+
+function bezier(a: number, b: number, t: number): number {
+  const s = 1 - t;
+  return 3 * s * s * t * a + 3 * s * t * t * b + t * t * t;
 }
