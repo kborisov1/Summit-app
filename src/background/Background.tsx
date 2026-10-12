@@ -53,6 +53,8 @@ const RUSH_WIND = 6;
 const FADE_RATE = 3;
 /** How quickly the climber's mood follows the player, per second. */
 const MOOD_RATE = 4;
+/** How quickly the runner's size and place follow a change in the UI's box, per second. */
+const AREA_RATE = 5;
 /** Metres of mountain that fit in one screen height. */
 const METRES_PER_SCREEN = 1150;
 
@@ -133,7 +135,20 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
       }
 
       const anchor = anchorRef.current?.current;
-      if (anchor?.isConnected) area = climbingArea(anchor.getBoundingClientRect());
+      if (anchor?.isConnected) {
+        // Ease toward the box's measurements, so a layout change never makes the
+        // runner jump in size or place.
+        const measured = climbingArea(anchor.getBoundingClientRect());
+        const k = area && !reducedMotion ? Math.min(1, dt * AREA_RATE) : 1;
+        area = area
+          ? {
+              x: area.x + (measured.x - area.x) * k,
+              base: area.base + (measured.base - area.base) * k,
+              size: area.size + (measured.size - area.size) * k,
+              room: area.room + (measured.room - area.room) * k,
+            }
+          : measured;
+      }
       const wanted = anchor?.isConnected ? 1 : 0;
 
       let fx = null;
