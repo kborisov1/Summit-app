@@ -87,6 +87,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, view: SceneView): void 
 
   drawCloudSea(ctx, view, smoothstep(0.66, 0.86, p));
   drawMist(ctx, view, 1 - smoothstep(0, 0.3, p));
+  drawGustStreaks(ctx, view, 1 - smoothstep(0.1, 0.32, p));
   drawStormShade(ctx, width, height, view.time, storm);
   drawSnow(ctx, view, storm);
   drawStreaks(ctx, view, view.rush ?? 0);
@@ -223,7 +224,7 @@ function drawTrees(
     const u = (k + hash(k * 2.3)) / TREE_SLOTS;
     // Treetops lean in a slow breeze; each tree is a little out of step.
     // A gust sweeps left to right, so it reaches each tree a moment apart.
-    const sway = Math.sin(time * 0.9 + k * 1.7) * width * 0.0012 + gust(time - u * 0.9) * width * 0.003;
+    const sway = Math.sin(time * 0.9 + k * 1.7) * width * 0.0012 + gust(time - u * GUST_CROSSING) * width * 0.003;
     const x = u * width + offsetX;
     const h = height * (0.018 + 0.022 * depth) * (0.7 + hash(k * 3.7) * 0.6);
     const y = crest(u) + h * 0.15;
@@ -386,10 +387,49 @@ function drawFlash(ctx: CanvasRenderingContext2D, { width, height }: SceneView, 
   ctx.fillRect(0, 0, width, height);
 }
 
-/** A brief puff of wind, 0..1: about 1.4 s long, every 8-12 s. */
+/** Seconds a gust takes to sweep across the screen from left to right. */
+const GUST_CROSSING = 2;
+const GUST_WISPS = 9;
+
+/** Pale wisps of air that sweep across the sky with each gust. */
+function drawGustStreaks(ctx: CanvasRenderingContext2D, { width, height, time }: SceneView, strength: number) {
+  if (strength <= 0) return;
+  const cycle = Math.floor(time / 10);
+  const since = time - cycle * 10 - gustStart(cycle);
+  if (since < 0 || since > GUST_CROSSING + 1) return;
+  ctx.lineCap = 'round';
+  ctx.lineWidth = Math.max(1, height * 0.0026);
+  for (let i = 0; i < GUST_WISPS; i++) {
+    // Each wisp trails a little behind the front, at its own height.
+    const head = (since - hash(cycle * 7.1 + i * 3.7) * 0.6) / GUST_CROSSING;
+    const length = width * (0.2 + hash(i * 5.3) * 0.2);
+    const x = -length + (width + length * 2) * head;
+    if (x < -length || x > width + length) continue;
+    const fade = Math.sin(clamp01(head) * Math.PI);
+    if (fade <= 0.02) continue;
+    const y = height * (0.12 + hash(i * 2.9 + cycle) * 0.5);
+    const rise = Math.sin(head * 5 + i) * height * 0.012;
+    const curl = height * (0.008 + hash(i * 8.3) * 0.012);
+    const line = ctx.createLinearGradient(x - length, 0, x, 0);
+    line.addColorStop(0, rgba(WHITE, 0));
+    line.addColorStop(0.75, rgba(WHITE, 0.75 * strength * fade));
+    line.addColorStop(1, rgba(WHITE, 0));
+    ctx.strokeStyle = line;
+    ctx.beginPath();
+    ctx.moveTo(x - length, y + rise);
+    ctx.bezierCurveTo(x - length * 0.6, y + rise - curl, x - length * 0.3, y + rise + curl, x, y + rise - curl * 0.3);
+    ctx.stroke();
+  }
+}
+
+function gustStart(cycle: number): number {
+  return 1 + hash(cycle * 2.9) * 5;
+}
+
+/** A brief puff of wind, 0..1: about 1.4 s long, every 10 s. */
 function gust(time: number): number {
   const cycle = Math.floor(time / 10);
-  const t = time - cycle * 10 - 1 - hash(cycle * 2.9) * 6;
+  const t = time - cycle * 10 - gustStart(cycle);
   if (t < 0 || t > 1.4) return 0;
   return Math.sin((t / 1.4) * Math.PI) ** 2;
 }
