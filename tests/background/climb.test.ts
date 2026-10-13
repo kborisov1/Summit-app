@@ -90,9 +90,8 @@ describe('climbFx', () => {
       const count = samples.filter((h, i) => h > 0 && (samples[i - 1] ?? 0) === 0).length;
       return { count, peak: Math.max(...samples) };
     };
-    // Common ends in one small hop; every rarer tier has at least two.
-    expect(leaps(1).count).toBe(1);
-    for (const r of [2, 3, 4, 5] as const) expect(leaps(r).count).toBe(2);
+    // Every tier makes exactly one leap.
+    for (const r of [1, 2, 3, 4, 5] as const) expect(leaps(r).count).toBe(1);
     for (let r = 2; r <= 5; r++) {
       expect(leaps(r as 2 | 3 | 4 | 5).peak).toBeGreaterThan(leaps((r - 1) as 1 | 2 | 3 | 4).peak);
     }
