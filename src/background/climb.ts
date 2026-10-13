@@ -60,9 +60,9 @@ interface Tier {
   leaps: Leap[];
 }
 
-// Rarer answers climb higher and with more drama: common ends in a small hop,
-// uncommon skips twice, rare adds a proper leap, very rare two bigger ones,
-// and legendary ends in a giant leap over the last lines and a cheer.
+// Rarer answers climb higher and with more drama: every tier ends in one leap,
+// small for common and bigger for each tier above, and legendary clears the
+// last lines in a giant leap and a cheer.
 const TIERS: Record<Rarity, Tier> = {
   1: { duration: 2.0, rush: 0, flash: 0, strides: 4, effort: 0, leaps: [{ from: 0.62, to: 0.84, height: 0.18 }] },
   2: {
@@ -71,10 +71,7 @@ const TIERS: Record<Rarity, Tier> = {
     flash: 0,
     strides: 5,
     effort: 0.25,
-    leaps: [
-      { from: 0.35, to: 0.53, height: 0.2 },
-      { from: 0.68, to: 0.9, height: 0.3 },
-    ],
+    leaps: [{ from: 0.68, to: 0.9, height: 0.3 }],
   },
   3: {
     duration: 2.8,
@@ -82,10 +79,7 @@ const TIERS: Record<Rarity, Tier> = {
     flash: 0.35,
     strides: 5,
     effort: 0.5,
-    leaps: [
-      { from: 0.18, to: 0.32, height: 0.22 },
-      { from: 0.45, to: 0.76, height: 0.55 },
-    ],
+    leaps: [{ from: 0.45, to: 0.76, height: 0.55 }],
   },
   4: {
     duration: 3.2,
@@ -93,10 +87,7 @@ const TIERS: Record<Rarity, Tier> = {
     flash: 0.6,
     strides: 6,
     effort: 0.75,
-    leaps: [
-      { from: 0.25, to: 0.5, height: 0.55 },
-      { from: 0.6, to: 0.92, height: 0.8 },
-    ],
+    leaps: [{ from: 0.6, to: 0.92, height: 0.8 }],
   },
   5: {
     duration: 3.8,
@@ -104,10 +95,7 @@ const TIERS: Record<Rarity, Tier> = {
     flash: 1,
     strides: 7,
     effort: 1,
-    leaps: [
-      { from: 0.18, to: 0.32, height: 0.3 },
-      { from: 0.45, to: 1, height: 1.3 },
-    ],
+    leaps: [{ from: 0.45, to: 1, height: 1.3 }],
   },
 };
 
