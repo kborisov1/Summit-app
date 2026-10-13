@@ -762,6 +762,31 @@ body {
   font-weight: 600;
 }
 
+.result__rarity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+}
+
+.rarity-meter {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.rarity-meter__pip {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tier-color) 22%, transparent);
+}
+
+.rarity-meter__pip.on {
+  background: var(--tier-color);
+}
+
 .result__item.miss .result__answer {
   font-weight: 400;
   color: var(--miss);

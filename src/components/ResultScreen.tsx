@@ -1,4 +1,4 @@
-import { displayAltitude, gainFor, RARITY_LABEL } from '../game/scoring';
+import { displayAltitude, gainFor, RARITY_LABEL, rarityEstimate } from '../game/scoring';
 import type { Prompt } from '../game/types';
 import type { DayResult } from '../storage/progress';
 import { formatMetres } from './format';
@@ -36,6 +36,16 @@ export function ResultScreen({ result, prompts, streak }: Props) {
                 <> · no altitude</>
               )}
             </span>
+            {a.rarity !== null && (
+              <span className="result__rarity">
+                <span className="rarity-meter" role="img" aria-label={`Rarity ${a.rarity} of 5`}>
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <span key={n} className={n <= a.rarity! ? 'rarity-meter__pip on' : 'rarity-meter__pip'} />
+                  ))}
+                </span>
+                {rarityEstimate(a.rarity)}
+              </span>
+            )}
           </li>
         ))}
       </ol>
