@@ -17,8 +17,10 @@ export interface ClimbFx {
   flash: number;
   /** Position in the stride cycle; whole numbers have the feet together. */
   phase: number;
-  /** 0..1, how hard the runner works: a jog at 0, a sprint at 1. Fixed per tier. */
+  /** 0..1, how hard the runner works: a jog at 0, a sprint at 1. Rises with the tier, and eases off at either end of the run. */
   effort: number;
+  /** 0..1, how much of the climb's ground the runner has covered, in step with its legs. */
+  ground: number;
   /** 0..1, how wide the legs and arms swing. */
   stride: number;
   /** Height of a leap, in runner heights. */
@@ -172,6 +174,7 @@ export const STANDING = {
   crouch: 0,
   cheer: 0,
   slip: 0,
+  ground: 0,
   lead: 0,
   lines: 0,
   lit: 0,
@@ -205,11 +208,15 @@ function runnerMotion(tier: Tier, m: number) {
   }
   const airTime = tier.leaps.reduce((sum, leap) => sum + leap.to - leap.from, 0);
   const run = Math.min(1, Math.max(0, (m - airborne) / (1 - airTime)));
+  const pace = gait(run);
   return {
     ...STANDING,
-    // The run keeps its pace into and out of each leap.
-    phase: tier.strides * run,
-    effort: tier.effort,
+    // The legs cover ground at the gait's uneven pace, ending with the feet together.
+    phase: tier.strides * pace.ground,
+    // It sets off at a brisk walk, picks up into a run and eases off before stopping.
+    effort: Math.min(1, tier.effort * (0.55 + 0.45 * pace.surge) + 0.25 * pace.surge),
+    // In the air it carries on across at the climb's pace.
+    ground: pace.ground * (1 - airTime) + airborne,
     // The swing opens as the runner sets off and closes on arrival.
     stride: Math.sin(Math.PI * run) ** 0.5 * (1 - air) * (1 - 0.6 * crouch),
     hop,
@@ -218,6 +225,27 @@ function runnerMotion(tier: Tier, m: number) {
     lead: Math.sin(Math.PI * m) ** 1.5,
     // Legendary lands its giant leap with both arms up.
     cheer: tier.effort === 1 ? smoothstep(0.9, 1, m) : 0,
+  };
+}
+
+// The run's cadence: slow at the ends, quickest through the middle, with a
+// small uneven surge and lull so it never runs like a metronome.
+const CADENCE_SWING = 0.45;
+const CADENCE_WOBBLE = 0.12;
+
+function cadenceIntegral(r: number): number {
+  return (
+    r -
+    (CADENCE_SWING * Math.sin(2 * Math.PI * r)) / (2 * Math.PI) +
+    (CADENCE_WOBBLE * (1 - Math.cos(5 * Math.PI * r))) / (5 * Math.PI)
+  );
+}
+
+/** Ground covered 0..1 at run fraction `r`, and 0..1 how hard it is pushing there. */
+function gait(r: number) {
+  return {
+    ground: cadenceIntegral(r) / cadenceIntegral(1),
+    surge: (1 - Math.cos(2 * Math.PI * r)) / 2,
   };
 }
 

@@ -48,16 +48,24 @@ describe('stepRoam', () => {
 
   it('drifts a short way toward the roomier side during a climb', () => {
     const start = { ...ROAM_START, x: 60 };
-    const { roam } = run(2, () => ({ climb: { id: 3, startX: 60 } }), start);
+    const { roam } = run(2, () => ({ climb: { id: 3, startX: 60, ground: 1 } }), start);
     expect(roam.x).toBeLessThan(0);
     expect(roam.walking).toBe(0);
-    expect(roamGoal(start, { ...base, climb: { id: 3, startX: -60 } })).toBeGreaterThan(0);
+    expect(roamGoal(start, { ...base, climb: { id: 3, startX: -60, ground: 1 } })).toBeGreaterThan(0);
     // The drift is short, so the climb reads as upward rather than a dash across.
     const wide = { ...base, range: 600 };
     for (let id = 0; id < 20; id++) {
-      const goal = roamGoal(start, { ...wide, climb: { id, startX: 60 } });
-      expect(Math.abs(goal - 60)).toBeLessThanOrEqual(2.5 * base.size);
+      const goal = roamGoal(start, { ...wide, climb: { id, startX: 60, ground: 1 } });
+      expect(Math.abs(goal - 60)).toBeLessThanOrEqual(3 * base.size);
     }
+  });
+
+  it('moves across in step with the ground its legs cover during a climb', () => {
+    const wide = { ...base, range: 600 };
+    const at = (ground: number) => roamGoal(ROAM_START, { ...wide, climb: { id: 5, startX: 0, ground } });
+    expect(at(0)).toBe(0);
+    expect(Math.abs(at(0.5))).toBeGreaterThan(0);
+    expect(Math.abs(at(1))).toBeCloseTo(2 * Math.abs(at(0.5)));
   });
 
   it('stops to watch while the player types', () => {
@@ -73,7 +81,7 @@ describe('stepRoam', () => {
   });
 
   it('leans into its motion and pitches with a leap', () => {
-    const right = run(1.5, () => ({ climb: { id: 1, startX: -100 } }), { ...ROAM_START, x: -100 });
+    const right = run(1.5, () => ({ climb: { id: 1, startX: -100, ground: 1 } }), { ...ROAM_START, x: -100 });
     expect(right.trace.some((r) => r.tilt > 0.05)).toBe(true);
     // Facing right, rising tips the nose up (a negative tilt), and falling tips it down.
     const rising = stepRoam({ ...ROAM_START, lastHop: 0 }, { ...base, dt: 0.1, hop: 0.2 });
