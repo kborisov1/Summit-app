@@ -1,21 +1,14 @@
 /**
  * Pure canvas drawing for what is pinned to the mountain's world (scope
- * "Experience"): facts at their real heights, a pennant where each answer
- * landed, the tier lines of the climb in progress, and the answer chip that
+ * "Experience"): facts at their real heights, the tier lines of the climb in progress, and the answer chip that
  * rides above the runner. Everything is placed by altitude, so it scrolls
  * with the camera.
  */
 import type { Landmark } from '../game/landmarks';
-import { RARITY_GAIN, RARITY_LABEL } from '../game/scoring';
+import { RARITY_GAIN } from '../game/scoring';
 import type { Rarity } from '../game/types';
 
 type Rgb = [number, number, number];
-
-export interface Landing {
-  altitude: number;
-  rarity: Rarity;
-  answer: string;
-}
 
 export interface MarkersView {
   width: number;
@@ -33,7 +26,6 @@ export interface MarkersView {
   /** 0..1 */
   alpha: number;
   landmarks: readonly Landmark[];
-  landings: readonly Landing[];
   /** Tier lines for the climb in progress, or null between climbs. */
   lines: {
     /** Altitude the climb started from. */
@@ -75,7 +67,6 @@ export function drawMarkers(ctx: CanvasRenderingContext2D, view: MarkersView): v
   const prev = ctx.globalAlpha;
   ctx.textBaseline = 'middle';
   drawLandmarks(ctx, view);
-  drawLandings(ctx, view);
   drawTierLines(ctx, view);
   drawChip(ctx, view);
   ctx.globalAlpha = prev;
@@ -124,45 +115,6 @@ function drawLandmarks(ctx: CanvasRenderingContext2D, view: MarkersView) {
   });
   ctx.letterSpacing = '0px';
   ctx.shadowBlur = 0;
-}
-
-/** A small pennant in the air where each answer landed, with its tier and answer. */
-function drawLandings(ctx: CanvasRenderingContext2D, view: MarkersView) {
-  const { x, half } = view;
-  ctx.font = `600 11px ${SANS}`;
-  for (const landing of view.landings) {
-    const y = screenY(view, landing.altitude);
-    const fade = edgeFade(view, y);
-    if (fade <= 0.01) continue;
-    const color = TIER_COLOR[landing.rarity];
-    // Planted left of the runner's line, flying away from it, so the label
-    // never crosses the runner standing at the newest landing.
-    const pole = x - half * 0.4;
-    ctx.globalAlpha = view.alpha * fade;
-    ctx.strokeStyle = rgba(INK, 0.8);
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(pole, y);
-    ctx.lineTo(pole, y - 20);
-    ctx.stroke();
-    ctx.fillStyle = rgba(color, 1);
-    ctx.beginPath();
-    ctx.moveTo(pole, y - 20);
-    ctx.lineTo(pole - 13, y - 16);
-    ctx.lineTo(pole, y - 12);
-    ctx.closePath();
-    ctx.fill();
-    const label = `${RARITY_LABEL[landing.rarity]} · ${landing.answer}`;
-    const pw = ctx.measureText(label).width + 12;
-    const px = Math.max(8, pole - 17 - pw);
-    ctx.fillStyle = rgba(WHITE, 0.82);
-    ctx.beginPath();
-    ctx.roundRect(px, y - 25, pw, 18, 9);
-    ctx.fill();
-    ctx.fillStyle = rgba(mix(color, INK, 0.45), 1);
-    ctx.textAlign = 'left';
-    ctx.fillText(label, px + 6, y - 15.5);
-  }
 }
 
 /** Dashed chalk lines at each tier's gain; each flashes in the accent colour as the runner passes. */

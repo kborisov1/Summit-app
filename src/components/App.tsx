@@ -70,23 +70,12 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
       lastResult ? { id: run.results.length, rarity: lastResult.rarity, answer: lastResult.answer ?? '' } : null,
     [lastResult, run.results.length],
   );
-  // Where each answer landed: the running total of the gains up to it.
-  const landings = useMemo(
-    () =>
-      run.results.flatMap((r, i) =>
-        r.rarity === null || r.answer === null
-          ? []
-          : [{ altitude: run.results.slice(0, i + 1).reduce((sum, x) => sum + x.gain, 0), rarity: r.rarity, answer: r.answer }],
-      ),
-    [run.results],
-  );
 
   return (
     <>
       <Background
         altitude={altitude}
         climb={climb}
-        landings={landings}
         climberAnchor={climberRef}
         cues={{ typing, lowTime, missId: run.miss ? `${run.results.length}-${run.miss.count}` : null }}
       />

@@ -21,7 +21,7 @@ export interface SceneView {
   flash?: number;
   /** The runner, when one is on screen; the scene picks its colours. */
   climber?: Omit<ClimberView, 'time' | 'ink'> | null;
-  /** What is pinned to the mountain: facts, landings, tier lines, the answer chip. */
+  /** What is pinned to the mountain: facts, tier lines, the answer chip. */
   markers?: Omit<MarkersView, 'width' | 'height' | 'progress'> | null;
 }
 
