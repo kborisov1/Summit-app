@@ -4,7 +4,6 @@ import { RARITY_GAIN, SUMMIT_ALTITUDE } from '../game/scoring';
 import type { Rarity } from '../game/types';
 import { climbFx, STANDING } from './climb';
 import { CALM } from './climber';
-import type { Landing } from './markers';
 import { ROAM_START, stepRoam } from './roam';
 import { drawScene } from './scene';
 
@@ -22,7 +21,6 @@ interface Props {
   altitude: number;
   climb?: ClimbEvent | null;
   /** Where earlier answers landed, marked on the mountain. */
-  landings?: readonly Landing[];
   /**
    * The empty box in the UI the runner climbs in, its base near the bottom
    * edge. The runner and the mountain's markers fade out while the box is
@@ -41,7 +39,6 @@ export interface ClimberCues {
 }
 
 const NO_CUES: ClimberCues = { typing: false, lowTime: false, missId: null };
-const NO_LANDINGS: readonly Landing[] = [];
 
 /** How quickly the camera eases toward a new altitude without a climb, per second. */
 const EASE_RATE = 1.6;
@@ -62,11 +59,10 @@ const METRES_PER_SCREEN = 1150;
  * Full-screen canvas behind the UI. The loop reads its inputs from refs so
  * frames are not tied to React renders (architecture "Rendering").
  */
-export function Background({ altitude, climb = null, landings = NO_LANDINGS, climberAnchor, cues = NO_CUES }: Props) {
+export function Background({ altitude, climb = null, climberAnchor, cues = NO_CUES }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const targetRef = useRef(altitude);
   const climbRef = useRef(climb);
-  const landingsRef = useRef(landings);
   const anchorRef = useRef(climberAnchor);
   const cuesRef = useRef(cues);
   const wakeRef = useRef<() => void>(() => {});
@@ -75,7 +71,6 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
   useEffect(() => {
     targetRef.current = altitude;
     climbRef.current = climb;
-    landingsRef.current = landings;
     anchorRef.current = climberAnchor;
     cuesRef.current = cues;
     wakeRef.current();
@@ -216,7 +211,6 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
           pxPerMetre,
           alpha: presence,
           landmarks: LANDMARKS,
-          landings: landingsRef.current,
           lines:
             active && fx && active.event.rarity
               ? {
