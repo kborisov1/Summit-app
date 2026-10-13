@@ -6,6 +6,8 @@
  */
 import { drawClimber, type ClimberView } from './climber';
 import { drawMarkers, type MarkersView } from './markers';
+import { drawCloudBanks, drawSunRays, drawVignette, type AtmosphereView } from './atmosphere';
+import { drawSilhouettes } from './silhouettes';
 import { clamp01, drift, hash, mix, puff, ramp, rgb, rgba, smoothstep, valueNoise, type Ramp, type Rgb } from './paint';
 
 export interface SceneView {
@@ -15,6 +17,9 @@ export interface SceneView {
   time: number;
   /** Seconds of wind travel; runs faster while the camera rushes upward. */
   wind?: number;
+  /** The camera's altitude in metres and the world's scale, for scenery pinned to the mountain. */
+  altitude?: number;
+  pxPerMetre?: number;
   /** Camera effects from the climb animation (see climb.ts). */
   bob?: number;
   shake?: number;
@@ -64,6 +69,12 @@ const LAYERS = [
   { seed: 71, base: 0.86, amplitude: 0.07, scale: 6.0, drop: 1.05, peak: 0, color: [48, 60, 82] as Rgb },
 ];
 
+/** The summit's height and the metres one screen shows, when the caller gives no world. */
+const SUMMIT_METRES = 8848;
+const SCREEN_METRES = 1150;
+/** Where the camera's altitude sits on screen, as a share of the height. */
+const WORLD_BASE = 0.72;
+
 const CLOUD_COUNT = 6;
 const CLOUD_SEA_COUNT = 14;
 const SNOW_COUNT = 240;
@@ -99,6 +110,24 @@ export function drawScene(ctx: CanvasRenderingContext2D, view: SceneView): void 
   drawDawn(ctx, view, 0.4 * (1 - smoothstep(0.12, 0.34, p)));
   drawMotes(ctx, view, 1 - smoothstep(0.1, 0.32, p));
   drawGustStreaks(ctx, view, 1 - smoothstep(0.1, 0.32, p));
+
+  // Scenery pinned to the mountain scrolls with the camera's altitude, from
+  // a line just below the middle of the screen.
+  const air: AtmosphereView = {
+    width,
+    height,
+    time: view.time,
+    wind: view.wind ?? view.time,
+    camera: view.altitude ?? p * SUMMIT_METRES,
+    base: height * WORLD_BASE - (view.bob ?? 0) * height,
+    pxPerMetre: view.pxPerMetre ?? height / SCREEN_METRES,
+    progress: p,
+  };
+  const silhouettes = { ...air, tintAt: (m: number) => ramp(GROUND_TINT, m / SUMMIT_METRES), horizon };
+  drawSunRays(ctx, air);
+  drawCloudBanks(ctx, air, 'back');
+  drawSilhouettes(ctx, { ...silhouettes, layer: 'mid' });
+
   // The markers and runner are nearest the camera, so they move most with each step.
   const nearX = (view.shake ?? 0) * width * 1.4;
   const nearY = -(view.bob ?? 0) * height * 1.4;
@@ -121,8 +150,11 @@ export function drawScene(ctx: CanvasRenderingContext2D, view: SceneView): void 
       ink: mix(DARK, horizon, 0.12),
     });
   }
+  drawSilhouettes(ctx, { ...silhouettes, layer: 'near' });
+  drawCloudBanks(ctx, air, 'front');
   drawStormShade(ctx, width, height, view.time, storm);
   drawSnow(ctx, view, storm);
+  drawVignette(ctx, air);
   drawStreaks(ctx, view, view.rush ?? 0);
   drawFlash(ctx, view, view.flash ?? 0);
 }

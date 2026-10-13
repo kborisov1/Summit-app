@@ -202,6 +202,8 @@ export function Background({ altitude, climb = null, landings = NO_LANDINGS, cli
         width,
         height,
         progress: Math.min(1, camera / SUMMIT_ALTITUDE),
+        altitude: camera,
+        pxPerMetre,
         time,
         wind,
         bob: fx?.bob,
