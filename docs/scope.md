@@ -30,13 +30,13 @@ The game is inspired by Krillion.io, a trivia "deep dive" game, but uses a mount
 
 The summit is 8,848 m. Each answer belongs to one of five rarity tiers with a fixed altitude gain. All prompts carry equal weight. The altitude meter is capped at 8,848 m, but gains are added as raw values, so a near-perfect run reaches the summit.
 
-| Tier | Rarity | Gain per answer |
-|---|---|---|
-| 1 | Common | 130 m |
-| 2 | Uncommon | 350 m |
-| 3 | Rare | 650 m |
-| 4 | Very rare | 1,000 m |
-| 5 | Legendary | 1,400 m |
+| Tier | Rarity | Display name | Gain per answer |
+|---|---|---|---|
+| 1 | Common | Hobby climber | 130 m |
+| 2 | Uncommon | Weekend warrior | 350 m |
+| 3 | Rare | Mountain goat | 650 m |
+| 4 | Very rare | Alpine legend | 1,000 m |
+| 5 | Legendary | Himalayan madman | 1,400 m |
 
 Reference runs (7 prompts):
 
