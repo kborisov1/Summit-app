@@ -1,0 +1,166 @@
+{
+  "id": "sample-003",
+  "note": "Drafted with Claude for creator review. Rarities are rough guesses, not familiarity scores (architecture: Content and Data Model). Theme: culture and geography.",
+  "prompts": [
+    {
+      "id": "european-city",
+      "question": "Name a city in Europe.",
+      "answers": [
+        { "canonical": "Paris", "rarity": 1 },
+        { "canonical": "London", "rarity": 1 },
+        { "canonical": "Rome", "rarity": 1 },
+        { "canonical": "Berlin", "rarity": 1 },
+        { "canonical": "Madrid", "rarity": 1 },
+        { "canonical": "Vienna", "rarity": 2 },
+        { "canonical": "Prague", "rarity": 2 },
+        { "canonical": "Lisbon", "rarity": 2 },
+        { "canonical": "Athens", "rarity": 2 },
+        { "canonical": "Amsterdam", "rarity": 2 },
+        { "canonical": "Edinburgh", "rarity": 3 },
+        { "canonical": "Reykjavík", "rarity": 3 },
+        { "canonical": "Kraków", "rarity": 3 },
+        { "canonical": "Bruges", "rarity": 4 },
+        { "canonical": "Ghent", "rarity": 4 },
+        { "canonical": "Tallinn", "rarity": 4 },
+        { "canonical": "Ljubljana", "rarity": 4 },
+        { "canonical": "Valletta", "rarity": 5 },
+        { "canonical": "Chișinău", "rarity": 5 },
+        { "canonical": "Andorra la Vella", "rarity": 5 }
+      ],
+      "wrongAnswers": ["Atlantis", "Narnia"]
+    },
+    {
+      "id": "river",
+      "question": "Name a river.",
+      "answers": [
+        { "canonical": "Nile", "rarity": 1 },
+        { "canonical": "Amazon", "rarity": 1 },
+        { "canonical": "Mississippi", "rarity": 1 },
+        { "canonical": "Thames", "rarity": 1 },
+        { "canonical": "Danube", "rarity": 2 },
+        { "canonical": "Rhine", "rarity": 2 },
+        { "canonical": "Yangtze", "rarity": 2 },
+        { "canonical": "Ganges", "rarity": 2 },
+        { "canonical": "Volga", "rarity": 3 },
+        { "canonical": "Mekong", "rarity": 3 },
+        { "canonical": "Seine", "rarity": 3 },
+        { "canonical": "Murray", "rarity": 4 },
+        { "canonical": "Zambezi", "rarity": 4 },
+        { "canonical": "Orinoco", "rarity": 4 },
+        { "canonical": "Irrawaddy", "rarity": 5 },
+        { "canonical": "Okavango", "rarity": 5 },
+        { "canonical": "Lena", "rarity": 5 },
+        { "canonical": "Kolyma", "rarity": 5 }
+      ],
+      "wrongAnswers": ["Lake Victoria", "Atlantic"]
+    },
+    {
+      "id": "south-american-country",
+      "question": "Name a country in South America.",
+      "answers": [
+        { "canonical": "Brazil", "rarity": 1 },
+        { "canonical": "Argentina", "rarity": 1 },
+        { "canonical": "Chile", "rarity": 1 },
+        { "canonical": "Peru", "rarity": 1 },
+        { "canonical": "Colombia", "rarity": 2 },
+        { "canonical": "Venezuela", "rarity": 2 },
+        { "canonical": "Ecuador", "rarity": 2 },
+        { "canonical": "Bolivia", "rarity": 3 },
+        { "canonical": "Uruguay", "rarity": 3 },
+        { "canonical": "Paraguay", "rarity": 3 },
+        { "canonical": "Guyana", "rarity": 4 },
+        { "canonical": "Suriname", "aliases": ["Surinam"], "rarity": 5 }
+      ],
+      "wrongAnswers": ["Mexico", "Antarctica"]
+    },
+    {
+      "id": "novel",
+      "question": "Name a famous novel.",
+      "answers": [
+        { "canonical": "Pride and Prejudice", "rarity": 1 },
+        { "canonical": "1984", "aliases": ["Nineteen Eighty-Four"], "rarity": 1 },
+        { "canonical": "To Kill a Mockingbird", "rarity": 1 },
+        { "canonical": "The Great Gatsby", "rarity": 1 },
+        { "canonical": "Moby-Dick", "rarity": 2 },
+        { "canonical": "War and Peace", "rarity": 2 },
+        { "canonical": "Don Quixote", "aliases": ["Don Quijote"], "rarity": 2 },
+        { "canonical": "Ulysses", "rarity": 3 },
+        { "canonical": "Middlemarch", "rarity": 4 },
+        { "canonical": "Bleak House", "rarity": 4 },
+        { "canonical": "The Brothers Karamazov", "rarity": 4 },
+        { "canonical": "Dhalgren", "rarity": 5 },
+        { "canonical": "Ferdydurke", "rarity": 5 },
+        { "canonical": "Gravity's Rainbow", "rarity": 5 }
+      ],
+      "wrongAnswers": ["Newspaper", "Poem"]
+    },
+    {
+      "id": "ball-sport",
+      "question": "Name a sport played with a ball.",
+      "answers": [
+        { "canonical": "Football", "aliases": ["Soccer"], "rarity": 1 },
+        { "canonical": "Basketball", "rarity": 1 },
+        { "canonical": "Tennis", "rarity": 1 },
+        { "canonical": "Baseball", "rarity": 1 },
+        { "canonical": "Golf", "rarity": 2 },
+        { "canonical": "Volleyball", "rarity": 2 },
+        { "canonical": "Rugby", "rarity": 2 },
+        { "canonical": "Cricket", "rarity": 2 },
+        { "canonical": "Handball", "rarity": 3 },
+        { "canonical": "Water polo", "rarity": 3 },
+        { "canonical": "Lacrosse", "rarity": 3 },
+        { "canonical": "Bandy", "rarity": 4 },
+        { "canonical": "Squash", "rarity": 4 },
+        { "canonical": "Korfball", "rarity": 5 },
+        { "canonical": "Pelota", "rarity": 5 },
+        { "canonical": "Sepak takraw", "rarity": 5 }
+      ],
+      "wrongAnswers": ["Chess", "Swimming"]
+    },
+    {
+      "id": "sculptor",
+      "question": "Name a famous sculptor.",
+      "answers": [
+        { "canonical": "Michelangelo", "rarity": 1 },
+        { "canonical": "Rodin", "aliases": ["Auguste Rodin"], "rarity": 1 },
+        { "canonical": "Donatello", "rarity": 2 },
+        { "canonical": "Bernini", "aliases": ["Gian Lorenzo Bernini"], "rarity": 3 },
+        { "canonical": "Canova", "aliases": ["Antonio Canova"], "rarity": 4 },
+        { "canonical": "Brancusi", "aliases": ["Constantin Brâncuși"], "rarity": 4 },
+        { "canonical": "Phidias", "rarity": 4 },
+        { "canonical": "Praxiteles", "rarity": 5 },
+        { "canonical": "Giambologna", "rarity": 5 },
+        { "canonical": "Houdon", "rarity": 5 },
+        { "canonical": "Thorvaldsen", "rarity": 5 }
+      ],
+      "wrongAnswers": ["Mozart", "Shakespeare"]
+    },
+    {
+      "id": "dance",
+      "question": "Name a dance.",
+      "answers": [
+        { "canonical": "Waltz", "rarity": 1 },
+        { "canonical": "Tango", "rarity": 1 },
+        { "canonical": "Salsa", "rarity": 1 },
+        { "canonical": "Ballet", "rarity": 1 },
+        { "canonical": "Foxtrot", "rarity": 2 },
+        { "canonical": "Samba", "rarity": 2 },
+        { "canonical": "Flamenco", "rarity": 2 },
+        { "canonical": "Hip-hop", "rarity": 2 },
+        { "canonical": "Polka", "rarity": 3 },
+        { "canonical": "Rumba", "rarity": 3 },
+        { "canonical": "Bolero", "rarity": 3 },
+        { "canonical": "Cha-cha", "rarity": 3 },
+        { "canonical": "Hula", "rarity": 4 },
+        { "canonical": "Kathak", "rarity": 4 },
+        { "canonical": "Tarantella", "rarity": 4 },
+        { "canonical": "Bharatanatyam", "rarity": 4 },
+        { "canonical": "Morris dance", "rarity": 5 },
+        { "canonical": "Sardana", "rarity": 5 },
+        { "canonical": "Hornpipe", "rarity": 5 },
+        { "canonical": "Capoeira", "rarity": 5 }
+      ],
+      "wrongAnswers": ["Karate", "Yoga"]
+    }
+  ]
+}
