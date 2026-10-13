@@ -3,6 +3,7 @@ import {
   displayAltitude,
   gainFor,
   hasReachedSummit,
+  rarityEstimate,
   RARITY_GAIN,
   SUMMIT_ALTITUDE,
 } from '../../src/game/scoring';
@@ -33,5 +34,12 @@ describe('scoring', () => {
 
   it('cannot reach the summit before the seventh prompt', () => {
     expect(6 * RARITY_GAIN[5]).toBeLessThan(SUMMIT_ALTITUDE);
+  });
+});
+
+describe('rarityEstimate', () => {
+  it('gets steeper with each tier', () => {
+    expect(rarityEstimate(1)).toBe('About 1 in 2 climbers would say this');
+    expect(rarityEstimate(5)).toBe('About 1 in 250 climbers would say this');
   });
 });

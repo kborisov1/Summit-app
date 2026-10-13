@@ -29,6 +29,22 @@ export const RARITY_QUIP: Record<Rarity, string> = {
   5: 'Hardly anyone has stood here.',
 };
 
+/**
+ * Rough "about 1 in N" odds that a player gives an answer of each tier. These are
+ * tier-wide estimates, not measured counts: the game has no player data (scope "Experience").
+ */
+export const RARITY_ODDS: Record<Rarity, number> = {
+  1: 2,
+  2: 8,
+  3: 25,
+  4: 80,
+  5: 250,
+};
+
+export function rarityEstimate(rarity: Rarity): string {
+  return `About 1 in ${RARITY_ODDS[rarity]} climbers would say this`;
+}
+
 export function gainFor(rarity: Rarity | null): number {
   return rarity === null ? 0 : RARITY_GAIN[rarity];
 }
