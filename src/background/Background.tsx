@@ -178,7 +178,7 @@ export function Background({ altitude, climb = null, climberAnchor, cues = NO_CU
           size: area.size,
           range,
           bar: Math.max(0, area.half - area.size * 0.5),
-          climb: active && { id: active.event.id, startX: active.startX },
+          climb: active && { id: active.event.id, startX: active.startX, ground: fx?.ground ?? 0 },
           typing: cue.typing,
           hop: fx?.hop ?? 0,
         });

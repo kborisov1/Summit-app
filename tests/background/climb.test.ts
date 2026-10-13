@@ -51,6 +51,20 @@ describe('climbFx', () => {
     }
   });
 
+  it('covers its ground steadily onward at an uneven pace, from a walk up to a run and back', () => {
+    for (const r of [1, 2, 3, 4, 5] as const) {
+      const d = climbArrival(r);
+      const n = 200;
+      const samples = Array.from({ length: n + 1 }, (_, i) => climbFx(r, (d * i) / n));
+      expect(samples[0].ground).toBe(0);
+      expect(samples[n].ground).toBeCloseTo(1);
+      const gains = samples.slice(1).map((s, i) => s.ground - samples[i].ground);
+      expect(Math.min(...gains)).toBeGreaterThanOrEqual(0);
+      const efforts = samples.map((s) => s.effort);
+      expect(Math.max(...efforts) - Math.min(...efforts)).toBeGreaterThan(0.2);
+    }
+  });
+
   it('makes the runner work harder for rarer answers', () => {
     const end = (r: 1 | 2 | 3 | 4 | 5) => climbFx(r, climbDuration(r));
     for (let r = 2; r <= 5; r++) {

@@ -47,8 +47,11 @@ export interface RoamInput {
   range: number;
   /** How far either side of centre the answer bar reaches, in CSS pixels. */
   bar: number;
-  /** The climb in progress: its id, and where across the lane it began. */
-  climb: { id: number; startX: number } | null;
+  /**
+   * The climb in progress: its id, where across the lane it began, and 0..1
+   * how much of its ground the runner has covered.
+   */
+  climb: { id: number; startX: number; ground: number } | null;
   /** The player is typing, so the runner comes over to watch the answer bar. */
   typing: boolean;
   /** Current leap height, in runner heights. */
@@ -58,6 +61,9 @@ export interface RoamInput {
 // Speeds in runner heights per second: a stroll between answers, a run across during a climb.
 const STROLL_SPEED = 1.1;
 const CLIMB_SPEED = 2.4;
+/** How far one climb drifts sideways, in runner heights, shortest and longest. */
+const CLIMB_DRIFT_MIN = 1.5;
+const CLIMB_DRIFT_MAX = 3;
 /** Seconds between the runner's decisions to stroll somewhere new, shortest and longest. */
 const PAUSE_MIN = 2.5;
 const PAUSE_MAX = 7;
@@ -75,9 +81,11 @@ const MAX_PITCH = 0.22;
 export function roamGoal(roam: Roam, input: RoamInput): number {
   const { climb, range, size, bar } = input;
   if (climb) {
-    // Each climb drifts a short way toward the roomier side, so the run stays mostly upward.
+    // Each climb drifts a short way toward the roomier side, so the run stays
+    // mostly upward, moving across as its legs cover ground so it never runs on the spot.
     const side = climb.startX >= 0 ? -1 : 1;
-    return clamp(climb.startX + side * size * (1 + 1.5 * hash(climb.id * 7.3)), -range, range);
+    const drift = size * (CLIMB_DRIFT_MIN + (CLIMB_DRIFT_MAX - CLIMB_DRIFT_MIN) * hash(climb.id * 7.3));
+    return clamp(climb.startX + side * drift * climb.ground, -range, range);
   }
   // While the player types it comes in over the answer bar, if it has wandered past its end.
   if (input.typing) return clamp(roam.x, -Math.min(bar, range), Math.min(bar, range));
@@ -105,8 +113,9 @@ export function stepRoam(previous: Roam, input: RoamInput): Roam {
   const roam = decide(previous, input);
   const goal = roamGoal(roam, input);
   const top = (climb ? CLIMB_SPEED : STROLL_SPEED) * size;
-  const wantV = clamp((goal - roam.x) * 2.5, -top, top);
-  const v = roam.v + (wantV - roam.v) * Math.min(1, dt * 4);
+  // A climb's goal moves with the legs, so it is followed closely.
+  const wantV = clamp((goal - roam.x) * (climb ? 8 : 2.5), -top, top);
+  const v = roam.v + (wantV - roam.v) * Math.min(1, dt * (climb ? 10 : 4));
   const x = clamp(roam.x + v * dt, -range, range);
   // It turns to face where it is going, and keeps its facing when it stops,
   // except that while the player types it turns toward the middle of the bar.
