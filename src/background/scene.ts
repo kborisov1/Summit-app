@@ -6,6 +6,7 @@
  */
 import { drawClimber, type ClimberView } from './climber';
 import { drawMarkers, type MarkersView } from './markers';
+import { clamp01, drift, hash, mix, puff, ramp, rgb, rgba, smoothstep, valueNoise, type Ramp, type Rgb } from './paint';
 
 export interface SceneView {
   width: number;
@@ -25,8 +26,6 @@ export interface SceneView {
   markers?: Omit<MarkersView, 'width' | 'height' | 'progress'> | null;
 }
 
-type Rgb = [number, number, number];
-type Ramp = [number, Rgb][];
 
 // Colour keyframes by progress: forest, alpine, glacier storm, death zone, summit sunrise.
 const SKY_TOP: Ramp = [
@@ -335,36 +334,6 @@ function drawCloudSea(ctx: CanvasRenderingContext2D, view: SceneView, strength: 
   }
 }
 
-let puffSprite: HTMLCanvasElement | null = null;
-const PUFF_SIZE = 128;
-
-/** A soft white blob, drawn once and stamped for every cloud. */
-function getPuffSprite(): HTMLCanvasElement | null {
-  if (puffSprite) return puffSprite;
-  if (typeof document === 'undefined') return null;
-  const sprite = document.createElement('canvas');
-  sprite.width = sprite.height = PUFF_SIZE;
-  const c = sprite.getContext('2d');
-  if (!c) return null;
-  const r = PUFF_SIZE / 2;
-  const g = c.createRadialGradient(r, r, 0, r, r, r);
-  g.addColorStop(0, 'rgba(250,246,240,1)');
-  g.addColorStop(1, 'rgba(250,246,240,0)');
-  c.fillStyle = g;
-  c.fillRect(0, 0, PUFF_SIZE, PUFF_SIZE);
-  puffSprite = sprite;
-  return sprite;
-}
-
-function puff(ctx: CanvasRenderingContext2D, x: number, y: number, rx: number, ry: number, alpha: number) {
-  const sprite = getPuffSprite();
-  if (!sprite) return;
-  const prev = ctx.globalAlpha;
-  ctx.globalAlpha = prev * clamp01(alpha);
-  ctx.drawImage(sprite, x - rx, y - ry, rx * 2, ry * 2);
-  ctx.globalAlpha = prev;
-}
-
 function drawMist(ctx: CanvasRenderingContext2D, view: SceneView, strength: number) {
   if (strength <= 0) return;
   const { width, height, time } = view;
@@ -560,11 +529,6 @@ function puffOfWind(time: number, g: { start: number; length: number; strength: 
   return g.strength * Math.sin((t / g.length) * Math.PI) ** 2;
 }
 
-/** Smooth, aperiodic wobble in -1..1, so ambient motion never settles into a beat. */
-function drift(seed: number, t: number): number {
-  return (valueNoise(seed + 401, t) + 0.5 * valueNoise(seed + 809, t * 2.3)) / 0.75 - 1;
-}
-
 // Ridgelines never change, so their noise is sampled once per layer and
 // interpolated each frame instead of being recomputed.
 const PROFILE_MIN = -0.2;
@@ -605,49 +569,4 @@ function ridge(seed: number, x: number): number {
     freq *= 2.1;
   }
   return sum / 0.9375;
-}
-
-function valueNoise(seed: number, x: number): number {
-  const i = Math.floor(x);
-  const t = x - i;
-  const s = t * t * (3 - 2 * t);
-  return hash(seed * 31.7 + i) * (1 - s) + hash(seed * 31.7 + i + 1) * s;
-}
-
-function hash(n: number): number {
-  const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
-  return s - Math.floor(s);
-}
-
-function clamp01(v: number): number {
-  return Math.min(1, Math.max(0, v));
-}
-
-function smoothstep(a: number, b: number, v: number): number {
-  const t = clamp01((v - a) / (b - a));
-  return t * t * (3 - 2 * t);
-}
-
-/** Smoothly interpolates between colour keyframes. */
-function ramp(stops: Ramp, p: number): Rgb {
-  for (let i = 1; i < stops.length; i++) {
-    const [at, color] = stops[i];
-    if (p <= at) {
-      const [prevAt, prev] = stops[i - 1];
-      return mix(prev, color, smoothstep(prevAt, at, p));
-    }
-  }
-  return stops[stops.length - 1][1];
-}
-
-function mix(a: Rgb, b: Rgb, t: number): Rgb {
-  return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-}
-
-function rgb(c: Rgb): string {
-  return `rgb(${c.map(Math.round).join(',')})`;
-}
-
-function rgba(c: Rgb, a: number): string {
-  return `rgba(${c.map(Math.round).join(',')},${a})`;
 }
