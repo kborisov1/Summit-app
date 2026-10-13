@@ -165,12 +165,12 @@ function drawLandings(ctx: CanvasRenderingContext2D, view: MarkersView) {
   }
 }
 
-/** Dashed chalk lines at each tier's gain; each flashes in its colour as the runner passes. */
+/** Dashed chalk lines at each tier's gain; each flashes in the accent colour as the runner passes. */
 function drawTierLines(ctx: CanvasRenderingContext2D, view: MarkersView) {
   const { lines, width } = view;
   if (!lines || lines.alpha <= 0.01) return;
-  ctx.font = `600 12px ${SANS}`;
-  ctx.letterSpacing = '0.08em';
+  // The accent, lightened once the sky turns to night so it still reads.
+  const accent = mix(ACCENT, WHITE, smoothstep(0.66, 0.8, view.progress) * 0.65);
   for (const r of RARITIES) {
     const altitude = lines.from + RARITY_GAIN[r];
     const y = screenY(view, altitude);
@@ -180,27 +180,18 @@ function drawTierLines(ctx: CanvasRenderingContext2D, view: MarkersView) {
     const passed = past >= 0 ? 1 : 0;
     const flash = past >= 0 ? Math.exp(-past / FLASH_METRES) : 0;
     const glow = Math.max(flash, r === lines.rarity ? lines.lit : 0);
-    const color = TIER_COLOR[r];
     ctx.globalAlpha = view.alpha * lines.alpha * fade;
 
     ctx.setLineDash(passed ? [] : [9, 7]);
-    ctx.strokeStyle = rgba(passed ? mix(color, WHITE, 0.25 * glow) : mix(CHALK, INK, 0.25), passed ? 0.95 : 0.6);
+    ctx.strokeStyle = rgba(passed ? mix(accent, WHITE, 0.25 * glow) : mix(CHALK, INK, 0.25), passed ? 0.95 : 0.6);
     ctx.lineWidth = 2 + 1.5 * glow;
-    ctx.shadowColor = rgba(color, 0.9);
+    ctx.shadowColor = rgba(accent, 0.9);
     ctx.shadowBlur = passed ? 6 + 18 * glow : 0;
     ctx.beginPath();
     ctx.moveTo(12, y);
     ctx.lineTo(width - 12, y);
     ctx.stroke();
     ctx.setLineDash([]);
-
-    // The tag sits above the right end of the line, like a chalked note.
-    const label = `${RARITY_LABEL[r].toUpperCase()} · +${RARITY_GAIN[r].toLocaleString('en-US')} m`;
-    ctx.textAlign = 'right';
-    ctx.shadowColor = rgba(passed ? color : WHITE, 0.9);
-    ctx.shadowBlur = passed ? 10 * (0.5 + glow) : 6;
-    ctx.fillStyle = rgba(passed ? mix(color, INK, 0.15) : mix(INK, WHITE, 0.15), 1);
-    ctx.fillText(label, width - 16, y - 11);
   }
   ctx.letterSpacing = '0px';
   ctx.shadowBlur = 0;
