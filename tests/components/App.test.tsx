@@ -67,7 +67,7 @@ describe('App run flow', () => {
     renderApp();
     answer('legendry');
     expect(meterValue()).toBe('1400');
-    expect(screen.getByRole('heading', { name: 'Legendary' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Himalayan madman' })).toBeInTheDocument();
     expect(screen.getByText('“Legendary”')).toBeInTheDocument();
     expect(screen.getByText('+1,400 m')).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
@@ -174,7 +174,7 @@ describe('App prompt timer', () => {
     renderApp();
     answer('Rare');
     advance(PROMPT_TIME_LIMIT_MS * 2);
-    expect(screen.getByRole('heading', { name: 'Rare' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Mountain goat' })).toBeInTheDocument();
     climbOn();
     expect(screen.getByRole('timer')).toHaveTextContent('30');
   });

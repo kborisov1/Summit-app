@@ -13,11 +13,11 @@ export const RARITY_GAIN: Record<Rarity, number> = {
 };
 
 export const RARITY_LABEL: Record<Rarity, string> = {
-  1: 'Common',
-  2: 'Uncommon',
-  3: 'Rare',
-  4: 'Very rare',
-  5: 'Legendary',
+  1: 'Hobby climber',
+  2: 'Weekend warrior',
+  3: 'Mountain goat',
+  4: 'Alpine legend',
+  5: 'Himalayan madman',
 };
 
 /** A line of colour for each tier on the landing banner. */
