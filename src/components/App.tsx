@@ -81,7 +81,6 @@ export function App({ sets = bundledSets, now = new Date(), store = browserStore
       />
       <div className={lowTime ? 'layout low-time' : 'layout'}>
         <header className="topbar">
-          <h1 className="title">Summit</h1>
           <AltitudeMeter altitude={altitude} />
         </header>
         <main className={landing || (prompt && started && !today) ? 'stage stage--run' : 'stage'}>

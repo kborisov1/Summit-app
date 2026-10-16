@@ -67,16 +67,6 @@ body {
   gap: 12px;
 }
 
-.title {
-  margin: 0;
-  font-family: var(--serif);
-  font-weight: 600;
-  font-size: 1.25rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(43, 50, 69, 0.75);
-}
-
 .stage {
   flex: 1;
   display: flex;
