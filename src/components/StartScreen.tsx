@@ -33,7 +33,7 @@ export function StartScreen({ onStart }: Props) {
         </li>
       </ul>
       <button type="button" className="button start__button" onClick={onStart} autoFocus>
-        Start
+        Climb
       </button>
     </section>
   );

@@ -33,7 +33,7 @@ function memoryStore(initial: Record<string, string> = {}): KeyValueStore & { da
 
 function renderApp(store = memoryStore(), skipStart = false) {
   render(<App sets={[set]} now={now} store={store} />);
-  if (!skipStart) fireEvent.click(screen.getByRole('button', { name: 'Start' }));
+  if (!skipStart) fireEvent.click(screen.getByRole('button', { name: 'Climb' }));
   return store;
 }
 
