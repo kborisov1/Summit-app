@@ -18,6 +18,7 @@
         { "canonical": "Amsterdam", "rarity": 2 },
         { "canonical": "Edinburgh", "rarity": 3 },
         { "canonical": "Reykjavík", "rarity": 3 },
+        { "canonical": "Sofia", "rarity": 3 },
         { "canonical": "Kraków", "rarity": 3 },
         { "canonical": "Bruges", "rarity": 4 },
         { "canonical": "Ghent", "rarity": 4 },
