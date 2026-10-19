@@ -6,7 +6,7 @@
       "id": "chemical-element",
       "question": "Name a chemical element.",
       "answers": [
-        { "canonical": "Oxygen", "rarity": 1 },
+        { "canonical": "Oxxygen", "rarity": 1 },
         { "canonical": "Hydrogen", "rarity": 1 },
         { "canonical": "Carbon", "rarity": 1 },
         { "canonical": "Gold", "rarity": 1 },
