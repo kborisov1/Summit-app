@@ -7,3 +7,4 @@ coverage/
 backups/
 .DS_Store
 CLAUDE.md
+scripts/.cache/
