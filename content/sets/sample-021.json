@@ -88,6 +88,8 @@
         { "canonical": "Mascarpone", "rarity": 2 },
         { "canonical": "Orange sorbet", "aliases": ["Orange"], "rarity": 2 },
         { "canonical": "Rocky road", "rarity": 3 },
+        { "canonical": "Gum", "rarity": 3 },
+        { "canonical": "Watermelon","aliases": ["Melon"], "rarity": 3 },
         { "canonical": "Raspberry ripple", "rarity": 3 },
         { "canonical": "Neapolitan", "rarity": 3 },
         { "canonical": "Butter pecan", "rarity": 3 },
