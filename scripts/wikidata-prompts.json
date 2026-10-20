@@ -1,0 +1,47 @@
+{
+  "prompts": {
+    "chemical-element": {
+      "where": "?item wdt:P31 wd:Q11344 ; wdt:P1086 ?number . FILTER(?number <= 118)"
+    },
+    "african-country": {
+      "where": "?item wdt:P31 wd:Q3624078 ; wdt:P30 wd:Q15 ."
+    },
+    "human-bone": {
+      "where": "?item wdt:P279+ wd:Q265868 .",
+      "minSitelinks": 30,
+      "exclude": [
+        "Baculum",
+        "Ivory",
+        "Dentin",
+        "Carapace",
+        "Oracle bone",
+        "Facial skeleton",
+        "Ossicles",
+        "Sesamoid bone",
+        "Vertebra",
+        "Phalanx bone",
+        "Carpal bones",
+        "Metacarpal bones",
+        "Metatarsal bones",
+        "Tarsus (skeleton)",
+        "Thoracic vertebrae",
+        "Lumbar vertebrae",
+        "Cervical vertebrae"
+      ],
+      "rename": {
+        "Talus bone": "Talus",
+        "Hyoid bone": "Hyoid",
+        "Ethmoid bone": "Ethmoid",
+        "Sphenoid bone": "Sphenoid",
+        "Hamate bone": "Hamate"
+      }
+    },
+    "shakespeare-play": {
+      "where": "?item wdt:P31 wd:Q116476516 ; wdt:P50 wd:Q692 ."
+    },
+    "dog-breed": {
+      "where": "?item wdt:P31 wd:Q39367 .",
+      "minSitelinks": 25
+    }
+  }
+}

@@ -33,7 +33,7 @@ Each daily run is one prompt set, stored as one file in `content/sets/<id>.json`
 
 Content lives in `content/` and is separate from code, so new prompt sets can be added without touching components.
 
-Rarity values come from an offline Node script. The script queries Wikipedia pageview counts from the Wikimedia REST API and converts them to a familiarity score. The output is written to the JSON files, and the creator can override any value by hand. The script runs only when content is updated, never in the browser.
+Answers and rarity values come from an offline Node script, `scripts/enrich-wikidata.ts` (run with `npm run enrich -- --set content/sets/<id>.json`). For each prompt mapped in `scripts/wikidata-prompts.json` it queries Wikidata for every matching item, adds missing answers and English alternative names to the set file, then ranks all answers of the prompt by English Wikipedia pageviews over the last 12 months (Wikimedia REST API) and splits them into five equal-sized tiers: most viewed is tier 1, least viewed is tier 5. It is a dry run unless `--write` is passed. Per-prompt `pins` override the automatic tier, `--keep-rarity` leaves existing tiers alone, and prompts without a mapping are left hand-curated. Existing answers are never removed. The creator can still override any value by hand, and the script runs only when content is updated, never in the browser.
 
 ## Daily Selection
 
@@ -83,7 +83,7 @@ The layout below is scaffolded. Directories are empty placeholders until feature
 ```
 summit/
 ├── content/            # prompts and answers (JSON)
-├── scripts/            # offline rarity script (Node)
+├── scripts/            # offline Wikidata and pageview script (Node)
 ├── src/
 │   ├── components/     # React UI: HUD, prompt card, run screen
 │   ├── background/     # canvas rendering for mountains, clouds, weather
