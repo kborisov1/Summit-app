@@ -38,11 +38,12 @@ const { values } = parseArgs({
     months: { type: 'string', default: '12' },
     'max-aliases': { type: 'string', default: '6' },
     'no-cache': { type: 'boolean', default: false },
+    'item-timeout': { type: 'string', default: '30' },
   },
 });
 
 if (!values.set) {
-  console.error('Usage: node scripts/enrich-wikidata.ts --set <file> [--prompt <id>] [--write] [--keep-rarity] [--months 12] [--no-cache]');
+  console.error('Usage: node scripts/enrich-wikidata.ts --set <file> [--prompt <id>] [--write] [--keep-rarity] [--months 12] [--item-timeout 30] [--no-cache]');
   process.exit(1);
 }
 
@@ -66,15 +67,25 @@ for (const prompt of raw.prompts) {
   );
   const exclude = new Set(source.exclude ?? []);
   const kept = entries.filter((entry) => !exclude.has(entry.title));
-  const views = await mapLimit(kept, 2, (entry) =>
-    cached(`views:${entry.title}:${range.start}:${range.end}`, useCache, () => totalViews(entry.title, range)),
-  );
-  const items: WikiItem[] = kept.map((entry, i) => {
+  const timeoutMs = Number(values['item-timeout']) * 1000;
+  const views = await mapLimit(kept, 2, async (entry) => {
+    try {
+      return await cached(`views:${entry.title}:${range.start}:${range.end}`, useCache, () =>
+        totalViews(entry.title, range, AbortSignal.timeout(timeoutMs)),
+      );
+    } catch {
+      return null;
+    }
+  });
+  const dropped = kept.filter((_, i) => views[i] === null).map((entry) => entry.title);
+  const items: WikiItem[] = kept.flatMap((entry, i) => {
+    const count = views[i];
+    if (count === null) return [];
     const name = source.rename?.[entry.title];
     const renamed = name
       ? { ...entry, label: name, title: name, aliases: [entry.label, entry.title, ...entry.aliases] }
       : entry;
-    return { ...renamed, views: views[i] };
+    return [{ ...renamed, views: count }];
   });
 
   const { prompt: merged, report } = mergePrompt(prompt, items, {
@@ -92,6 +103,7 @@ for (const prompt of raw.prompts) {
   console.log(`  rarity changes: ${report.rarityChanges.length}${report.rarityChanges.length ? ' (' + report.rarityChanges.slice(0, 10).map((c) => `${c.canonical} ${c.from}->${c.to}`).join(', ') + ')' : ''}`);
   console.log(`  tier sizes 1..5: ${tierCounts.join(' / ')}${report.tiered ? '' : '  (too few items to tier)'}`);
   if (report.unmatched.length) console.log(`  NOT FOUND in Wikidata, untouched: ${report.unmatched.join(', ')}`);
+  if (dropped.length) console.log(`  DROPPED, page views not fetched within ${values['item-timeout']}s: ${dropped.join(', ')}`);
   if (report.clashes.length) console.log(`  name clashes, skipped: ${report.clashes.join(', ')}`);
   console.log();
 }

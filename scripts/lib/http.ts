@@ -7,18 +7,20 @@ const CACHE_DIR = path.join(import.meta.dirname, '..', '.cache');
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Fetches with a descriptive User-Agent and retries on rate limits and server errors. */
-export async function politeFetch(url: string, init: RequestInit = {}): Promise<Response> {
+/** Fetches with a descriptive User-Agent and retries on rate limits and server errors. Aborts when `signal` fires. */
+export async function politeFetch(url: string, init: RequestInit = {}, signal?: AbortSignal): Promise<Response> {
+  const limit = AbortSignal.timeout(120_000);
   for (let attempt = 0; ; attempt++) {
     const response = await fetch(url, {
       ...init,
       headers: { 'User-Agent': USER_AGENT, ...init.headers },
-      signal: AbortSignal.timeout(120_000),
+      signal: signal ? AbortSignal.any([signal, limit]) : limit,
     });
     const retryable = response.status === 429 || response.status >= 500;
     if (!retryable || attempt >= 6) return response;
     const retryAfter = Number(response.headers.get('retry-after'));
     await sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 2000 * 2 ** attempt);
+    signal?.throwIfAborted();
   }
 }
 
