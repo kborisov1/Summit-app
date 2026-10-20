@@ -33,7 +33,80 @@ Each daily run is one prompt set, stored as one file in `content/sets/<id>.json`
 
 Content lives in `content/` and is separate from code, so new prompt sets can be added without touching components.
 
-Answers and rarity values come from an offline Node script, `scripts/enrich-wikidata.ts` (run with `npm run enrich -- --set content/sets/<id>.json`). For each prompt mapped in `scripts/wikidata-prompts.json` it queries Wikidata for every matching item, adds missing answers and English alternative names to the set file, then ranks all answers of the prompt by English Wikipedia pageviews over the last 12 months (Wikimedia REST API) and splits them into five equal-sized tiers: most viewed is tier 1, least viewed is tier 5. It is a dry run unless `--write` is passed. An item whose pageviews cannot be fetched within `--item-timeout` seconds (default 30) is dropped from that run and listed in the report, so one slow lookup never aborts the whole run. Per-prompt `pins` override the automatic tier, `--keep-rarity` leaves existing tiers alone, and prompts without a mapping are left hand-curated. Existing answers are never removed. The creator can still override any value by hand, and the script runs only when content is updated, never in the browser.
+Answers, alternative names and rarity values are produced by an offline Node script that runs only when content is updated, never in the browser. The creator can still override any value by hand. See "Content Enrichment Script" for usage.
+
+## Content Enrichment Script
+
+An offline tool that fills in the answer lists and rarity tiers of a prompt set from public data. It never runs in the game and ships nothing to the browser.
+
+### What it does
+
+For every prompt that has a mapping, the script:
+
+1. Asks Wikidata (SPARQL endpoint) for every item that matches the prompt, together with its English label, English Wikipedia article title and English alternative names ("also known as").
+2. Matches the existing answers of the prompt to those items by normalized name (the same normalization as "Answer Matching"), so "Ivory Coast" and "Côte d'Ivoire" resolve to one item.
+3. Adds the missing items as new answers and appends missing English aliases to every matched answer. Aliases that clash with another answer, a known wrong answer, or that look like noise (digits, codes, abbreviations, more than four words) are skipped.
+4. Fetches the English Wikipedia page views of each item (human readers only, Wikimedia REST API) over the last 12 full months and sums them.
+5. Ranks all matched and new answers of the prompt by views and splits them into five equal-sized tiers: most viewed is tier 1, least viewed is tier 5 (scope "Altitude Scoring"). Answers are written back sorted by tier, then by views.
+
+Existing answers are never removed. An existing answer that Wikidata does not recognise is left untouched, keeps its rarity and is listed in the report. Prompts without a mapping are skipped and stay hand-curated.
+
+### Requirements
+
+- Node with built-in TypeScript support (the repo uses Node 25). The script is run directly, with no build step.
+- Network access to `query.wikidata.org` and `wikimedia.org`. Both are free and need no account or key.
+
+### Running it
+
+```
+npm run enrich -- --set content/sets/<id>.json            # dry run, writes nothing
+npm run enrich -- --set content/sets/<id>.json --write    # update the file
+```
+
+| Option | Default | Effect |
+|---|---|---|
+| `--set <file>` | required | Prompt set file to enrich |
+| `--prompt <id>` | all mapped | Only process this prompt (repeatable) |
+| `--write` | off | Write the result to the set file. Without it the run only prints the report |
+| `--keep-rarity` | off | Add answers and aliases but leave the tiers of existing answers alone |
+| `--months <n>` | 12 | Length of the page-view window |
+| `--max-aliases <n>` | 6 | Maximum aliases per answer |
+| `--item-timeout <s>` | 30 | Drop an item whose page-view lookup takes longer than this, retries included |
+| `--no-cache` | off | Ignore cached responses and fetch fresh data |
+
+Responses are cached in `scripts/.cache/` (git-ignored), so a repeat run takes seconds. A fresh run is dominated by page-view lookups, which are throttled to two at a time, and takes roughly 5 to 10 minutes for a full set.
+
+### Mapping prompts to Wikidata
+
+`scripts/wikidata-prompts.json` maps a prompt `id` to its source under `prompts`. Each entry has:
+
+- `where` (required): SPARQL triple patterns that bind `?item`, for example `?item wdt:P31 wd:Q3624078 ; wdt:P30 wd:Q15 .` for sovereign states in Africa.
+- `minSitelinks`: keep only items with at least this many Wikimedia language versions, a fame floor for very large classes such as dog breeds.
+- `exclude`: Wikipedia titles to drop when the class pulls in items by mistake.
+- `rename`: Wikipedia title to the name players would type, for example `"Talus bone": "Talus"`.
+- `pins`: answer name to a fixed tier, applied after the automatic split, for answers where page views mislead.
+
+Not every prompt maps cleanly. Wikidata classes for people by occupation or for loosely defined groups such as musical instruments return unrelated items, so those prompts stay unmapped and hand-curated.
+
+### Report and verification
+
+Each prompt prints: answers before and after, how many existing answers matched, a sample of the added answers, aliases added, rarity changes, tier sizes, and three warning lines:
+
+- `NOT FOUND in Wikidata`: existing answers it did not recognise, left untouched.
+- `name clashes, skipped`: items whose name collides with an existing form.
+- `DROPPED`: items whose page views were not fetched within `--item-timeout`. They are not cached, and tiers for that prompt are computed from the remaining items, so re-run if more than a few are dropped.
+
+After a `--write` run:
+
+1. Review `git diff` of the set file: new answers belong to the prompt, aliases are sensible, tiers look right (well-known answers in tier 1, obscure ones in tier 5).
+2. Run `make test` and `make lint`. The test suite validates every set (a legendary answer per prompt, no alias clashes, no wrong answer also accepted).
+3. To undo a run, restore the file with `git checkout -- <file>`.
+
+### Limits
+
+- Page views measure how often an article is read, not how often a player would type it, so individual tiers can surprise. Use `pins` for those.
+- Tiers are equal-sized by count, so a prompt with many obscure answers puts many of them in tier 5.
+- Re-running recomputes tiers from the latest window, so values can shift slightly month to month.
 
 ## Daily Selection
 
@@ -83,7 +156,7 @@ The layout below is scaffolded. Directories are empty placeholders until feature
 ```
 summit/
 ├── content/            # prompts and answers (JSON)
-├── scripts/            # offline Wikidata and pageview script (Node)
+├── scripts/            # offline content enrichment script (Node), see Content Enrichment Script
 ├── src/
 │   ├── components/     # React UI: HUD, prompt card, run screen
 │   ├── background/     # canvas rendering for mountains, clouds, weather
