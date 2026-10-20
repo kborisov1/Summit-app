@@ -26,7 +26,6 @@ interface PromptConfig extends WikidataSource {
 }
 
 interface Config {
-  languages: string[];
   prompts: Record<string, PromptConfig>;
 }
 
@@ -62,8 +61,8 @@ for (const prompt of raw.prompts) {
     continue;
   }
 
-  const entries = await cached(`wikidata:${JSON.stringify(source)}:${config.languages}`, useCache, () =>
-    fetchEntries(source, config.languages),
+  const entries = await cached(`wikidata:en:${JSON.stringify(source)}`, useCache, () =>
+    fetchEntries(source),
   );
   const exclude = new Set(source.exclude ?? []);
   const kept = entries.filter((entry) => !exclude.has(entry.title));

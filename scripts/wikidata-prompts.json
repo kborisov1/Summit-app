@@ -1,11 +1,4 @@
 {
-  "languages": [
-    "es",
-    "fr",
-    "de",
-    "pt",
-    "it"
-  ],
   "prompts": {
     "chemical-element": {
       "where": "?item wdt:P31 wd:Q11344 ; wdt:P1086 ?number . FILTER(?number <= 118)"

@@ -5,7 +5,7 @@ import type { Prompt } from '../../src/game/types';
 const options: MergeOptions = { updateRarity: true, maxAliases: 6, pins: {} };
 
 function item(label: string, views: number, extra: Partial<WikiItem> = {}): WikiItem {
-  return { id: label, label, title: label, aliases: [], labels: [], views, ...extra };
+  return { id: label, label, title: label, aliases: [], views, ...extra };
 }
 
 const prompt: Prompt = {
@@ -18,7 +18,7 @@ const prompt: Prompt = {
 describe('mergePrompt', () => {
   const items = [
     item('Brazil', 9000, { aliases: ['Federative Republic of Brazil'] }),
-    item('Bolivia', 800, { aliases: ['Plurinational State of Bolivia'], labels: ['Bolivie'] }),
+    item('Bolivia', 800, { aliases: ['Plurinational State of Bolivia'] }),
     item('Peru', 700),
     item('Chile', 600),
     item('Suriname', 10),
@@ -32,7 +32,7 @@ describe('mergePrompt', () => {
     expect(report.added).toHaveLength(5);
     const brazil = merged.answers.find((a) => a.canonical === 'Brazil')!;
     expect(brazil.aliases).toEqual(['Brasil', 'Federative Republic of Brazil']);
-    expect(merged.answers.find((a) => a.canonical === 'Bolivia')!.aliases).toContain('Bolivie');
+    expect(merged.answers.find((a) => a.canonical === 'Bolivia')!.aliases).toEqual(['Plurinational State of Bolivia']);
   });
 
   it('ranks by views: most viewed common, least viewed legendary', () => {
@@ -85,7 +85,7 @@ describe('mergePrompt', () => {
 describe('alias filtering', () => {
   it('drops codes, digits, abbreviations and very long titles', () => {
     const noisy = item('Zedland', 5, {
-      aliases: ['element 79', 'RSA', 'zed', 'The Very Long Official Name Of Zedland Republic', 'Zedlandia'],
+      aliases: ['element 79', '₂₇Co', 'RSA', 'zed', 'The Very Long Official Name Of Zedland Republic', 'Zedlandia'],
     });
     const { prompt: merged } = mergePrompt({ ...prompt, answers: [] }, [noisy, ...[1, 2, 3, 4].map((n) => item(`Land${n}`, n))], options);
     expect(merged.answers.find((a) => a.canonical === 'Zedland')!.aliases).toEqual(['Zedlandia']);

@@ -7,9 +7,8 @@ export interface WikiItem {
   label: string;
   /** English Wikipedia article title. */
   title: string;
+  /** English alternative names. */
   aliases: string[];
-  /** Labels in other languages (for example "Brasil"). */
-  labels: string[];
   views: number;
 }
 
@@ -48,7 +47,7 @@ function usableAlias(form: string): boolean {
     normalize(form).length >= 4 &&
     form.length <= 40 &&
     form.split(/\s+/).length <= 4 &&
-    !/\d/.test(form) &&
+    !/\p{N}/u.test(form) &&
     !/ſ/.test(form) &&
     !/^[A-Z.\s]+$/.test(form)
   );
@@ -121,7 +120,7 @@ export function mergePrompt(
     const item = itemOfClone.get(answer);
     if (!item) continue;
     const have = answer.aliases ?? [];
-    for (const form of [item.label, item.title, ...item.aliases, ...item.labels]) {
+    for (const form of [item.label, item.title, ...item.aliases]) {
       if (have.length >= options.maxAliases) break;
       const key = normalize(form);
       if (!usableAlias(form) || taken.has(key)) continue;

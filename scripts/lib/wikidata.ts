@@ -7,8 +7,8 @@ export interface WikidataEntry {
   id: string;
   label: string;
   title: string;
+  /** English alternative names ("also known as"). */
   aliases: string[];
-  labels: string[];
 }
 
 export interface WikidataSource {
@@ -18,12 +18,10 @@ export interface WikidataSource {
   minSitelinks?: number;
 }
 
-export function buildQuery(source: WikidataSource, languages: string[]): string {
-  const langs = languages.map((l) => `"${l}"`).join(', ');
+export function buildQuery(source: WikidataSource): string {
   return `
 SELECT ?item ?label ?title
   (GROUP_CONCAT(DISTINCT ?alias; separator="${SEPARATOR}") AS ?aliases)
-  (GROUP_CONCAT(DISTINCT ?other; separator="${SEPARATOR}") AS ?labels)
 WHERE {
   ${source.where}
   ?item rdfs:label ?label . FILTER(lang(?label) = "en")
@@ -32,7 +30,6 @@ WHERE {
            schema:name ?title .
   ?item wikibase:sitelinks ?links . FILTER(?links >= ${source.minSitelinks ?? 0})
   OPTIONAL { ?item skos:altLabel ?alias . FILTER(lang(?alias) = "en") }
-  OPTIONAL { ?item rdfs:label ?other . FILTER(lang(?other) IN (${langs})) }
 }
 GROUP BY ?item ?label ?title`;
 }
@@ -41,11 +38,11 @@ interface Binding {
   [name: string]: { value: string };
 }
 
-export async function fetchEntries(source: WikidataSource, languages: string[]): Promise<WikidataEntry[]> {
+export async function fetchEntries(source: WikidataSource): Promise<WikidataEntry[]> {
   const response = await politeFetch(ENDPOINT, {
     method: 'POST',
     headers: { Accept: 'application/sparql-results+json', 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ query: buildQuery(source, languages) }),
+    body: new URLSearchParams({ query: buildQuery(source) }),
   });
   if (!response.ok) throw new Error(`Wikidata returned ${response.status}: ${(await response.text()).slice(0, 300)}`);
   const data = (await response.json()) as { results: { bindings: Binding[] } };
@@ -55,6 +52,5 @@ export async function fetchEntries(source: WikidataSource, languages: string[]):
     label: b.label.value,
     title: b.title.value,
     aliases: split(b.aliases?.value),
-    labels: split(b.labels?.value),
   }));
 }
