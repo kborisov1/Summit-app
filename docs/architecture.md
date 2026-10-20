@@ -49,12 +49,27 @@ For every prompt that has a mapping, the script:
 4. Fetches the English Wikipedia page views of each item (human readers only, Wikimedia REST API) over the last 12 full months and sums them.
 5. Ranks all matched and new answers of the prompt by views and splits them into five equal-sized tiers: most viewed is tier 1, least viewed is tier 5 (scope "Altitude Scoring"). Answers are written back sorted by tier, then by views.
 
-Existing answers are never removed. An existing answer that Wikidata does not recognise is left untouched, keeps its rarity and is listed in the report. Prompts without a mapping are skipped and stay hand-curated.
+Existing answers are never removed. An existing answer that Wikidata does not recognise is left untouched, keeps its rarity and is listed in the report. A prompt without a mapping is skipped and stays hand-curated (see "Enriching a set").
 
 ### Requirements
 
 - Node with built-in TypeScript support (the repo uses Node 25). The script is run directly, with no build step.
 - Network access to `query.wikidata.org` and `wikimedia.org`. Both are free and need no account or key.
+
+### Enriching a set
+
+The script only works on prompts that have an entry in `scripts/wikidata-prompts.json`. Running it on a set whose prompts are not mapped changes nothing, so enriching a set always starts with the mapping step. Do not run the script first and report that nothing happened.
+
+To enrich a set:
+
+1. List the prompt `id`s of the set and check each against `scripts/wikidata-prompts.json`.
+2. For every unmapped prompt, try to write a mapping now. Find the Wikidata class (the entity search at `wikidata.org/w/api.php?action=wbsearchentities` or a look at a known answer's "instance of" and "subclass of"), write the `where` pattern, and test it with a dry run on that prompt (`--prompt <id>`).
+3. Accept a mapping when it is on topic and complete enough: most existing answers match (the report's `matched existing` line), the added answers belong to the prompt, and the sample of first and last tiers looks right. Use `minSitelinks` for very large classes, `exclude` and `rename` to fix individual items, and `pins` for tiers that page views get wrong.
+4. If no clean class exists (for example flavours, file extensions, people by occupation, or loose groups), leave that prompt unmapped and hand-curated. Do not force a bad mapping. Say which prompts were left out and why.
+5. Run the script on the whole set with `--write`, then review the diff and run `make test` and `make lint` as described in "Report and verification".
+6. Commit the new mappings together with the updated set file.
+
+Missing mappings are not a reason to stop and ask which prompts to map: map every prompt that can be mapped cleanly, and report the rest. A run whose diff is only whitespace is not an enrichment: restore the file with `git checkout -- <file>` and either add the missing mappings or report that none of the prompts can be mapped.
 
 ### Running it
 
