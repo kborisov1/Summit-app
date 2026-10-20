@@ -12,9 +12,13 @@ export function window(months: number, now = new Date()): { start: string; end: 
 }
 
 /** Human page views of one English Wikipedia article over the window. 0 if the API has no data. */
-export async function totalViews(title: string, range: { start: string; end: string }): Promise<number> {
+export async function totalViews(
+  title: string,
+  range: { start: string; end: string },
+  signal?: AbortSignal,
+): Promise<number> {
   const article = encodeURIComponent(title.replace(/ /g, '_'));
-  const response = await politeFetch(`${BASE}/${article}/monthly/${range.start}/${range.end}`);
+  const response = await politeFetch(`${BASE}/${article}/monthly/${range.start}/${range.end}`, {}, signal);
   if (response.status === 404) return 0;
   if (!response.ok) throw new Error(`Pageviews for "${title}" returned ${response.status}`);
   const data = (await response.json()) as { items: { views: number }[] };
