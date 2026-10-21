@@ -708,7 +708,7 @@
         { "canonical": "Ferruginous hawk", "rarity": 5 },
         { "canonical": "Broad-winged hawk", "rarity": 5 },
         { "canonical": "Lappet-faced vulture", "rarity": 5 },
-        { "canonical": "Cinereous vulture", "aliases": ["Black vulture eurasian"], "rarity": 5 },
+        { "canonical": "Cinereous vulture", "rarity": 5 },
         { "canonical": "Cape vulture", "rarity": 5 },
         { "canonical": "White-backed vulture", "rarity": 5 },
         { "canonical": "Palm-nut vulture", "rarity": 5 },
