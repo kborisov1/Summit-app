@@ -133,6 +133,84 @@
         "Enderby, British Columbia": "Enderby",
         "Sault Ste. Marie, Ontario": "Sault Ste. Marie"
       }
+    },
+    "chinese-city": {
+      "where": "?item wdt:P31/wdt:P279* wd:Q515 ; wdt:P17 wd:Q148 .",
+      "minSitelinks": 30
+    },
+    "disney-film": {
+      "where": "?item wdt:P179 wd:Q56070713 .",
+      "exclude": [
+        "Frozen 3",
+        "Gigantic (unproduced film)"
+      ],
+      "pins": {
+        "Snow White": 1,
+        "Cinderella": 1,
+        "Pinocchio": 1,
+        "Dumbo": 2,
+        "Bambi": 2,
+        "Peter Pan": 2,
+        "Alice in Wonderland": 2,
+        "Sleeping Beauty": 2,
+        "101 Dalmatians": 2,
+        "Lady and the Tramp": 2,
+        "The Jungle Book": 2
+      }
+    },
+    "art-movement": {
+      "where": "?item wdt:P31 wd:Q968159 .",
+      "minSitelinks": 30,
+      "exclude": [
+        "Rapping",
+        "Humour",
+        "Epic poetry",
+        "Satire",
+        "Britpop",
+        "Hip-hop culture",
+        "Bohemianism",
+        "Kitsch",
+        "Eclecticism",
+        "Historicism",
+        "Agitprop",
+        "Psychedelia",
+        "New Romantic",
+        "En plein air",
+        "Bloomsbury Group",
+        "Harlem Renaissance",
+        "Degenerate art",
+        "Japonisme",
+        "Carolingian Renaissance",
+        "Renaissance of the 12th century",
+        "Hudson River School",
+        "Ink wash painting",
+        "Hellenistic art",
+        "Venetian painting",
+        "Sienese school",
+        "Kanō school",
+        "Carolingian art",
+        "Pre-Romanesque art and architecture",
+        "Caravaggisti",
+        "Young Poland",
+        "Superflat",
+        "Young British Artists",
+        "Zero group",
+        "Contemporary art",
+        "Modern art",
+        "Pre-Raphaelite Brotherhood",
+        "Outsider art",
+        "Quattrocento",
+        "Northern Renaissance",
+        "Early Netherlandish painting"
+      ],
+      "pins": {
+        "Pointillism": 3,
+        "Rococo": 3,
+        "Naturalism": 4,
+        "Photorealism": 2,
+        "Street art": 2,
+        "Op art": 3
+      }
     }
   }
 }
